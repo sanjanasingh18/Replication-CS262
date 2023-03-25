@@ -4,7 +4,7 @@ import math
 import time
 import uuid
 
-set_port = 8888
+set_port = 8887
 set_host = ''
 # set_host = 'dhcp-10-250-7-238.harvard.edu'
 #[uuid: account info ]
@@ -37,6 +37,9 @@ class ClientSocket:
   def setStatus(self, update_status):
     self.logged_in = update_status
 
+  def setUsername(self, username):
+    self.username = username
+
   def getUsername(self):
     return self.username
 
@@ -54,6 +57,9 @@ class ClientSocket:
 
   def addMessage(self, message_string):
     self.messages.append(message_string)
+
+  def setMessages(self, messages):
+    self.messages = messages
 
 
   # Function to create a new account

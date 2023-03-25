@@ -10,7 +10,7 @@ import threading
 from run_client import ClientSocket
 
 
-set_port = 8888
+set_port = 8887
 set_host = ''
 
 # create a global variable for our csv backup state file
@@ -30,16 +30,17 @@ class Server:
         # top of a locked function
         self.account_list_lock = threading.RLock()
 
+        # Create a list of accounts for this new server to keep track of clients
+        # Format of account_list is [UUID: ClientObject]
+        self.account_list = dict()
+
         # check if the csv file to store the state as data exists, if not then create the file
         if os.path.isfile(state_path):
             self.df = pd.read_csv(state_path)
-            # self.account_list = parse_csv_file()
+            self.parse_csv_file()
             print("Server restored. :)")
 
         else:
-            # Create a list of accounts for this new server to keep track of clients
-            # Format of account_list is [UUID: ClientObject]
-            self.account_list = dict()
 
             # Set up the new file account_list with index username and the columns
             self.df = pd.DataFrame(data=None, columns=headers)
@@ -58,9 +59,20 @@ class Server:
     def setup_server_state(self, filepath):
         return
     
-    # Function to parse the server data state csv file
-    def parse_csv_file(self, filepath):
-        return filepath
+    # Function to parse the server data state csv file and add to account_list
+    def parse_csv_file(self):
+        # Account list is a dictionary [UUID: ClientObject]
+        # for row in csv, 
+        # make client socket object using attributes
+        # add to dictionary!
+        for _, row in self.df.iterrows():
+            client_socket = ClientSocket()
+            client_socket.setUsername = row["Username"]
+            client_socket.setPassword = row["Password"]
+            client_socket.setMessages = row["Messages"]
+            self.account_list[row["Username"]] = client_socket
+        print(self.account_list)
+        
 
     # Returns true if the username exists in the account_list database,
     # false otherwise.
