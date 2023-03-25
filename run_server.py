@@ -9,6 +9,7 @@ from _thread import *
 import threading
 from run_client import ClientSocket
 
+
 set_port = 8888
 set_host = ''
 
@@ -42,7 +43,6 @@ class Server:
 
             # Set up the new file account_list with index username and the columns
             self.df = pd.DataFrame(data=None, columns=headers)
-            # self.df.set_index(["Username"])
 
             # Save it
             self.df.to_csv(state_path, header=True, index=True)
@@ -79,10 +79,21 @@ class Server:
         message_string = sender_username + message
         # lock mutex
         self.account_list_lock.acquire()
-        # TODO- update this in the pandas and save it
+
         self.account_list.get(recipient_username).addMessage(message_string)
 
-        #df.to_csv(state_path, header=True, index=True)
+        # update messages in the dataframe and save it
+        username_index = self.df.index[self.df["Username"] == recipient_username].tolist()[0]
+        current_messages = self.df["Messages"].values[username_index]
+
+        current_messages.append(message_string)
+       
+        self.df.at[username_index, "Messages"] = current_messages
+
+        # have to sleep so it saves correctly.        
+        time.sleep(0.05)
+        self.df.to_csv(state_path, header=True, index=True)
+
         # unlock mutex
         self.account_list_lock.release()
 
@@ -131,11 +142,6 @@ class Server:
         self.account_list[username] = ClientSocket()
 
         # make a new row where Username = username + append it to dataframe
-        # updated_row = {"Username": username, "Logged_in": False, "Password": "", "Messages":[], "Timestamp_last_updated": pd.Timestamp.now()}
-        # updated_row_df = pd.DataFrame(updated_row)
-
-        #self.df = self.df.append(updated_row, ignore_index = True)
-
         self.df.loc[len(self.df.index)] = [username, False, "", [], pd.Timestamp.now()] 
 
         # save updated CSV with the new username
@@ -152,9 +158,12 @@ class Server:
         self.account_list_lock.acquire()
         self.account_list.get(username.strip()).setPassword(data)
 
-        # TODO- update this in the pandas and save it
-        #TODO
-        #df.to_csv(state_path, header=True, index=True)
+        # update password in the dataframe and save it
+        self.df.loc[self.df["Username"] == username, "Password"] = data
+
+        # have to sleep so it saves correctly.        
+        time.sleep(0.05)
+        self.df.to_csv(state_path, header=True, index=True)
 
         # unlock mutex
         self.account_list_lock.release()
@@ -191,6 +200,8 @@ class Server:
 
             # clear all delivered messages as soon as possible to address concurent access
             self.account_list.get(client_username).emptyMessages()
+
+            # TODO EMPTY MESSAGES
         else:
             final_msg += "No messages available" 
         # unlock mutex
@@ -223,6 +234,9 @@ class Server:
 
         password = conn.recv(1024).decode()
 
+        # TODO login account; add is logged_in support if you log in successfully
+        # if server is shut down, are logged in users still logged in or do they get 
+        # logged out 
         # lock mutex
         self.account_list_lock.acquire()
 
