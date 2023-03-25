@@ -329,6 +329,8 @@ class ClientSocket:
             # if username is found, server will return 'User found. What is your message: '
             if data == "User found. Please enter your message: ":
               message = input(data)
+              while message == "":
+                message = input("Please enter a non-empty message to send: ")
               self.client.sendto(message.encode(), (host, port))
               # receive confirmation from the server that it was delivered
               data = self.client.recv(1024).decode()
