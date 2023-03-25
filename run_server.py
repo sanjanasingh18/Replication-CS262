@@ -138,7 +138,7 @@ class Server:
 
         self.df.loc[len(self.df.index)] = [username, False, "", [], pd.Timestamp.now()] 
 
-        # save updated CSV
+        # save updated CSV with the new username
         self.df.to_csv(state_path, header=True, index=True)
 
         # unlock mutex
