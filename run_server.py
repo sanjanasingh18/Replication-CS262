@@ -201,7 +201,15 @@ class Server:
             # clear all delivered messages as soon as possible to address concurent access
             self.account_list.get(client_username).emptyMessages()
 
-            # TODO EMPTY MESSAGES
+            # empty messages in persistent storage
+            username_index = self.df.index[self.df["Username"] == client_username].tolist()[0]
+        
+            self.df.at[username_index, "Messages"] = []
+
+            # have to sleep so it saves correctly.        
+            time.sleep(0.05)
+            self.df.to_csv(state_path, header=True, index=True)
+
         else:
             final_msg += "No messages available" 
         # unlock mutex
