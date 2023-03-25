@@ -1,6 +1,6 @@
 import os
 import csv
-import pandas
+import pandas as pd
 import socket
 import math
 import time
@@ -9,11 +9,12 @@ from _thread import *
 import threading
 from run_client import ClientSocket
 
-set_port = 8886
+set_port = 8888
 set_host = ''
 
 # create a global variable for our csv backup state file
 state_path = "server_state.csv"
+headers = ["Username", "Logged_in", "Password", "Messages", "Timestamp_last_updated"]
 
 class Server:
     curr_user = ''
@@ -30,13 +31,21 @@ class Server:
 
         # check if the csv file to store the state as data exists, if not then create the file
         if os.path.isfile(state_path):
-            # self.account_list = parse_csv_file(state_path)
+            self.df = pd.read_csv(state_path)
+            # self.account_list = parse_csv_file()
             print("Server restored. :)")
 
         else:
             # Create a list of accounts for this new server to keep track of clients
             # Format of account_list is [UUID: ClientObject]
             self.account_list = dict()
+
+            # Set up the new file account_list with index username and the columns
+            self.df = pd.DataFrame(data=None, columns=headers)
+            # self.df.set_index(["Username"])
+
+            # Save it
+            self.df.to_csv(state_path, header=True, index=True)
             print("Initializing New Server.")
         
         if sock is None:
@@ -70,7 +79,10 @@ class Server:
         message_string = sender_username + message
         # lock mutex
         self.account_list_lock.acquire()
+        # TODO- update this in the pandas and save it
         self.account_list.get(recipient_username).addMessage(message_string)
+
+        #df.to_csv(state_path, header=True, index=True)
         # unlock mutex
         self.account_list_lock.release()
 
@@ -118,6 +130,17 @@ class Server:
         # username, password, and queue of undelivered messages
         self.account_list[username] = ClientSocket()
 
+        # make a new row where Username = username + append it to dataframe
+        # updated_row = {"Username": username, "Logged_in": False, "Password": "", "Messages":[], "Timestamp_last_updated": pd.Timestamp.now()}
+        # updated_row_df = pd.DataFrame(updated_row)
+
+        #self.df = self.df.append(updated_row, ignore_index = True)
+
+        self.df.loc[len(self.df.index)] = [username, False, "", [], pd.Timestamp.now()] 
+
+        # save updated CSV
+        self.df.to_csv(state_path, header=True, index=True)
+
         # unlock mutex
         self.account_list_lock.release()
 
@@ -128,6 +151,11 @@ class Server:
         # lock mutex
         self.account_list_lock.acquire()
         self.account_list.get(username.strip()).setPassword(data)
+
+        # TODO- update this in the pandas and save it
+        #TODO
+        #df.to_csv(state_path, header=True, index=True)
+
         # unlock mutex
         self.account_list_lock.release()
         
