@@ -66,16 +66,22 @@ class Server:
         # make client socket object using attributes
         # add to dictionary!
         for index, row in self.df.iterrows():
+            # create the messages data structure as a list
             messages = []
             processed_messages = row["Messages"].strip('][').split(', ')
+            
+            # add each message to the messages list
             if processed_messages != ['']:
                 for message in processed_messages:
                     messages.append(message)
 
+            # create a new client socket for each client that needs to be restored
             client_socket = ClientSocket()
+            # update the username value in the client socket
             client_socket.setUsername(row["Username"])
+            # update the password value for the client socket
             client_socket.setPassword(row["Password"])
-            print('message', messages, type(messages))
+            # update the messages value for the client socket
             client_socket.setMessages(messages)
 
             # update messages in Dataframe to be stored correctly
