@@ -118,8 +118,11 @@ class Server:
         print("current messages type", current_messages)
 
         current_messages.append(message_string)
-       
+        
+        # update the messages value in the username's row
         self.df.at[username_index, "Messages"] = current_messages
+        # update the timestamp value in the username's row
+        self.df.at[username_index, "Timestamp_last_updated"] = pd.Timestamp.now()
 
         # have to sleep so it saves correctly.        
         time.sleep(0.05)
@@ -180,7 +183,6 @@ class Server:
         self.df.at[username_index, "Logged_in"] = False
         self.df.at[username_index, "Messages"] = []
         self.df.at[username_index, "Timestamp_last_updated"] = pd.Timestamp.now()
-        # self.df.loc[len(self.df.index)] = [username, False, "", [], pd.Timestamp.now()] 
 
         # save updated CSV with the new username
         self.df.to_csv(state_path, header=True, index=True)
@@ -198,6 +200,8 @@ class Server:
 
         # update password in the dataframe and save it
         self.df.loc[self.df["Username"] == username, "Password"] = data
+        # update the timestamp in the username's row
+        self.df.loc[self.df["Username"] == username, "Timestamp_last_updated"] =  pd.Timestamp.now()
 
         # have to sleep so it saves correctly.        
         time.sleep(0.05)
@@ -240,9 +244,13 @@ class Server:
             self.account_list.get(client_username).emptyMessages()
 
             # empty messages in persistent storage
+            # get the index value of the current client username
             username_index = self.df.index[self.df["Username"] == client_username].tolist()[0]
-        
+
+            # update the messages value in the username's row
             self.df.at[username_index, "Messages"] = []
+            # update the timestamp value in the username's row
+            self.df.at[username_index, "Timestamp_last_updated"] = pd.Timestamp.now()
 
             # have to sleep so it saves correctly.        
             time.sleep(0.05)
@@ -290,14 +298,21 @@ class Server:
         if (username.strip() in self.account_list):
             # get the password corresponding to this
             if password == self.account_list.get(username.strip()).getPassword():
+                # when the user attempts a log in, update the timestamp value in the username's row
+                self.df.loc[self.df["Username"] == username.strip(), "Timestamp_last_updated"] =  pd.Timestamp.now()
+                # Save it
+                self.df.to_csv(state_path, header=True, index=True)
                 # unlock mutex
                 self.account_list_lock.release()
-
                 confirmation = 'You have logged in. Thank you!'
                 self.send_client_messages(username.strip(), host, port, conn, confirmation)
                 return username.strip()
                 
             else:
+                # when the user attempts a log in, update the timestamp value in the username's row
+                self.df.loc[self.df["Username"] == username.strip(), "Timestamp_last_updated"] =  pd.Timestamp.now()
+                # Save it
+                self.df.to_csv(state_path, header=True, index=True)
                 # unlock mutex
                 self.account_list_lock.release()
                 print("Account not found.")
@@ -308,12 +323,20 @@ class Server:
         elif (username.strip()[5:] in self.account_list):
             # get the password corresponding to this
             if password == self.account_list.get(username.strip()[5:]).getPassword():
+                # when the user attempts a log in, update the timestamp value in the username's row
+                self.df.loc[self.df["Username"] == username.strip()[5:], "Timestamp_last_updated"] =  pd.Timestamp.now()
+                # Save it
+                self.df.to_csv(state_path, header=True, index=True)
                 # unlock mutex
                 self.account_list_lock.release()
                 confirmation = 'You have logged in. Thank you!'
                 self.send_client_messages(username.strip(), host, port, conn, confirmation)
                 return username.strip()[5:]
             else:
+                # when the user attempts a log in, update the timestamp value in the username's row
+                self.df.loc[self.df["Username"] == username.strip()[5:], "Timestamp_last_updated"] =  pd.Timestamp.now()
+                # Save it
+                self.df.to_csv(state_path, header=True, index=True)
                 # unlock mutex
                 self.account_list_lock.release()
                 print("Account not found.")
@@ -332,15 +355,30 @@ class Server:
     # function to delete a client account 
     def delete_account(self, username, host, port, conn):
         # You can only delete your account once you are logged in 
-
+        # lock mutex
+        self.account_list_lock.acquire()
         # check that the username is valid
         if username in self.account_list:
             # delete account and send confirmation
             del self.account_list[username]
+
+            # get the index value of the current client username
+            username_index = self.df.index[self.df["Username"] == username].tolist()[0]
+
+            # remove the row at the username_index from our dataframe
+            self.df.drop(index=username_index, inplace=True)
+
+            # Save it
+            self.df.to_csv(state_path, header=True, index=True)
+
             print("Successfully deleted client account, remaining accounts: ", self.account_list)
+            # unlock mutex
+            self.account_list_lock.release()
             message = 'Account successfully deleted.'
             conn.sendto(message.encode(), (host, port))
         else:
+            # unlock mutex
+            self.account_list_lock.release()
             # want to inform the client that it was unable to delete account
             message = 'Error deleting account'
             print(message)
