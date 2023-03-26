@@ -37,13 +37,20 @@ class Server:
         # check if the csv file to store the state as data exists, if not then create the file
         if os.path.isfile(state_path):
             self.df = pd.read_csv(state_path)
-            self.parse_csv_file()
-            print("Server restored. :)")
+            time_last_updated = self.parse_csv_file()
+            print("Server restored from " + time_last_updated + ". :)")
 
         else:
 
             # Set up the new file account_list with index username and the columns
             self.df = pd.DataFrame(data=None, columns=headers)
+
+            # make a new row that we will never delete and use to store the time of when this 
+            # server state was last updated
+            self.df.at[0, "Username"] = "last_updated"
+            self.df.at[0, "Logged_in"] = False
+            self.df.at[0, "Messages"] = []
+            self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
 
             # Save it
             self.df.to_csv(state_path, header=True, index=True)
@@ -65,6 +72,7 @@ class Server:
         # for row in csv, 
         # make client socket object using attributes
         # add to dictionary!
+
         for index, row in self.df.iterrows():
             # create the messages data structure as a list
             messages = []
@@ -88,7 +96,9 @@ class Server:
             self.df.at[index, "Messages"] = messages
 
             self.account_list[row["Username"]] = client_socket
-        print(self.account_list)
+
+        # return the time this server state was last updated so we can print it
+        return self.df["Timestamp_last_updated"].values[0]
         
 
     # Returns true if the username exists in the account_list database,
@@ -123,6 +133,8 @@ class Server:
         self.df.at[username_index, "Messages"] = current_messages
         # update the timestamp value in the username's row
         self.df.at[username_index, "Timestamp_last_updated"] = pd.Timestamp.now()
+        # update the timestamp value in the global timestamp last saved
+        self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
 
         # have to sleep so it saves correctly.        
         time.sleep(0.05)
@@ -184,6 +196,9 @@ class Server:
         self.df.at[username_index, "Messages"] = []
         self.df.at[username_index, "Timestamp_last_updated"] = pd.Timestamp.now()
 
+        # update the timestamp value in the global timestamp last saved
+        self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
+
         # save updated CSV with the new username
         self.df.to_csv(state_path, header=True, index=True)
 
@@ -202,6 +217,9 @@ class Server:
         self.df.loc[self.df["Username"] == username, "Password"] = data
         # update the timestamp in the username's row
         self.df.loc[self.df["Username"] == username, "Timestamp_last_updated"] =  pd.Timestamp.now()
+
+        # update the timestamp value in the global timestamp last saved
+        self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
 
         # have to sleep so it saves correctly.        
         time.sleep(0.05)
@@ -252,6 +270,9 @@ class Server:
             # update the timestamp value in the username's row
             self.df.at[username_index, "Timestamp_last_updated"] = pd.Timestamp.now()
 
+            # update the timestamp value in the global timestamp last saved
+            self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
+
             # have to sleep so it saves correctly.        
             time.sleep(0.05)
             self.df.to_csv(state_path, header=True, index=True)
@@ -268,7 +289,7 @@ class Server:
         conn.sendto(len_msg.encode(), (host, port))
 
         # receive back confirmation from the Client (this is to control info flow)
-        confirmed = conn.recv(1024).decode()
+        conn.recv(1024).decode()
 
         # then, send over the final message
         conn.sendto(final_msg.encode(), (host, port))
@@ -300,6 +321,8 @@ class Server:
             if password == self.account_list.get(username.strip()).getPassword():
                 # when the user attempts a log in, update the timestamp value in the username's row
                 self.df.loc[self.df["Username"] == username.strip(), "Timestamp_last_updated"] =  pd.Timestamp.now()
+                # update the timestamp value in the global timestamp last saved
+                self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
                 # Save it
                 self.df.to_csv(state_path, header=True, index=True)
                 # unlock mutex
@@ -311,6 +334,8 @@ class Server:
             else:
                 # when the user attempts a log in, update the timestamp value in the username's row
                 self.df.loc[self.df["Username"] == username.strip(), "Timestamp_last_updated"] =  pd.Timestamp.now()
+                # update the timestamp value in the global timestamp last saved
+                self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
                 # Save it
                 self.df.to_csv(state_path, header=True, index=True)
                 # unlock mutex
@@ -325,6 +350,8 @@ class Server:
             if password == self.account_list.get(username.strip()[5:]).getPassword():
                 # when the user attempts a log in, update the timestamp value in the username's row
                 self.df.loc[self.df["Username"] == username.strip()[5:], "Timestamp_last_updated"] =  pd.Timestamp.now()
+                # update the timestamp value in the global timestamp last saved
+                self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
                 # Save it
                 self.df.to_csv(state_path, header=True, index=True)
                 # unlock mutex
@@ -335,6 +362,8 @@ class Server:
             else:
                 # when the user attempts a log in, update the timestamp value in the username's row
                 self.df.loc[self.df["Username"] == username.strip()[5:], "Timestamp_last_updated"] =  pd.Timestamp.now()
+                # update the timestamp value in the global timestamp last saved
+                self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
                 # Save it
                 self.df.to_csv(state_path, header=True, index=True)
                 # unlock mutex
