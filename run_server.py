@@ -10,7 +10,7 @@ import threading
 from run_client import ClientSocket
 
 
-set_port = 8887
+set_port = 8888
 set_host = ''
 
 # create a global variable for our csv backup state file
@@ -65,11 +65,22 @@ class Server:
         # for row in csv, 
         # make client socket object using attributes
         # add to dictionary!
-        for _, row in self.df.iterrows():
+        for index, row in self.df.iterrows():
+            messages = []
+            processed_messages = row["Messages"].strip('][').split(', ')
+            if processed_messages != ['']:
+                for message in processed_messages:
+                    messages.append(message)
+
             client_socket = ClientSocket()
-            client_socket.setUsername = row["Username"]
-            client_socket.setPassword = row["Password"]
-            client_socket.setMessages = row["Messages"]
+            client_socket.setUsername(row["Username"])
+            client_socket.setPassword(row["Password"])
+            print('message', messages, type(messages))
+            client_socket.setMessages(messages)
+
+            # update messages in Dataframe to be stored correctly
+            self.df.at[index, "Messages"] = messages
+
             self.account_list[row["Username"]] = client_socket
         print(self.account_list)
         
@@ -97,6 +108,8 @@ class Server:
         # update messages in the dataframe and save it
         username_index = self.df.index[self.df["Username"] == recipient_username].tolist()[0]
         current_messages = self.df["Messages"].values[username_index]
+        print("current messages type", type(current_messages))
+        print("current messages type", current_messages)
 
         current_messages.append(message_string)
        
@@ -153,8 +166,15 @@ class Server:
         # username, password, and queue of undelivered messages
         self.account_list[username] = ClientSocket()
 
+        # get the username index of the current user that we are looking at
+        username_index = len(self.df.index)
+
         # make a new row where Username = username + append it to dataframe
-        self.df.loc[len(self.df.index)] = [username, False, "", [], pd.Timestamp.now()] 
+        self.df.at[username_index, "Username"] = username
+        self.df.at[username_index, "Logged_in"] = False
+        self.df.at[username_index, "Messages"] = []
+        self.df.at[username_index, "Timestamp_last_updated"] = pd.Timestamp.now()
+        # self.df.loc[len(self.df.index)] = [username, False, "", [], pd.Timestamp.now()] 
 
         # save updated CSV with the new username
         self.df.to_csv(state_path, header=True, index=True)

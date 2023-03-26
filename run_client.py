@@ -4,7 +4,7 @@ import math
 import time
 import uuid
 
-set_port = 8887
+set_port = 8888
 set_host = ''
 # set_host = 'dhcp-10-250-7-238.harvard.edu'
 #[uuid: account info ]
@@ -369,8 +369,9 @@ class ClientSocket:
           message = input("""
           To send a message, enter the recipient username, 
           'listaccts' to list all active usernames, 
-          'exit' to leave program, or 
-          'delete' to delete your account: 
+          'exit' to leave program, 
+          'delete' to delete your account,
+          or press enter to continue: 
           """)
 
         # will only exit while loops on 'exit' or 'delete'
