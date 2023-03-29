@@ -10,7 +10,7 @@ import threading
 from run_client import ClientSocket
 
 
-set_port = 8888
+set_port = 8885
 set_host = ''
 
 # create a global variable for our csv backup state file
@@ -73,6 +73,9 @@ class Server:
         # make client socket object using attributes
         # add to dictionary!
 
+        # lock mutex
+        self.account_list_lock.acquire()
+
         for index, row in self.df.iterrows():
             # create the messages data structure as a list
             messages = []
@@ -97,8 +100,14 @@ class Server:
 
             self.account_list[row["Username"]] = client_socket
 
+        # create a variable to store the timestamp the CSV file was last updated so we can return it
+        csv_timestamp = self.df["Timestamp_last_updated"].values[0]
+
+        # unlock mutex
+        self.account_list_lock.release()
+
         # return the time this server state was last updated so we can print it
-        return self.df["Timestamp_last_updated"].values[0]
+        return csv_timestamp
         
 
     # Returns true if the username exists in the account_list database,
@@ -106,7 +115,7 @@ class Server:
     def is_username_valid(self, recipient_username):
         # lock mutex as we access account_list
         self.account_list_lock.acquire()
-        result =  recipient_username in self.account_list
+        result = recipient_username in self.account_list
         # unlock mutex
         self.account_list_lock.release()
         return result
@@ -123,13 +132,14 @@ class Server:
 
         # update messages in the dataframe and save it
         username_index = self.df.index[self.df["Username"] == recipient_username].tolist()[0]
-        current_messages = self.df["Messages"].values[username_index]
-        print("current messages type", type(current_messages))
-        print("current messages type", current_messages)
-
-        current_messages.append(message_string)
         
-        # update the messages value in the username's row
+        # set the current_messages variable to be equal to the messages stored in the client socket
+        # current_messages = self.df["Messages"].values[username_index]
+        current_messages = self.account_list.get(recipient_username).getMessages()
+
+        # current_messages.append(message_string)
+        
+        # update the messages value in the username's row in the dataframe
         self.df.at[username_index, "Messages"] = current_messages
         # update the timestamp value in the username's row
         self.df.at[username_index, "Timestamp_last_updated"] = pd.Timestamp.now()
