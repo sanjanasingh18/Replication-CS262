@@ -4,7 +4,7 @@ import math
 import time
 import uuid
 
-set_port = 8885
+set_port = 8886
 set_host = ''
 # set_host = 'dhcp-10-250-7-238.harvard.edu'
 #[uuid: account info ]
@@ -114,7 +114,7 @@ class ClientSocket:
 
 
   # Function to login to a client account
-  def login_client_account(self, message, host, port, usrname_input=None, pwd_input=None):
+  def login_client_account(self, message, host, port, usrname_input="", pwd_input=""):
 
     # ensure that the server knows that it is the login function
     # message says 'login'

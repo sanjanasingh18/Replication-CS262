@@ -10,7 +10,7 @@ import threading
 from run_client import ClientSocket
 
 
-set_port = 8885
+set_port = 8886
 set_host = ''
 
 # create a global variable for our csv backup state file
