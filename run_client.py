@@ -114,16 +114,18 @@ class ClientSocket:
 
 
   # Function to login to a client account
-  def login_client_account(self, message, host, port):
+  def login_client_account(self, message, host, port, usrname_input=None, pwd_input=None):
 
     # ensure that the server knows that it is the login function
     # message says 'login'
     self.client.sendto(message.encode(), (host, port))
 
-    # client will enter a username
-    usrname_input = input("""
-    Please enter your username to log in: 
-    """)
+    # ensure nonempty username
+    while len(usrname_input) < 1:
+      # client will enter a username
+      usrname_input = input("""
+      Please enter your username to log in: 
+      """)
 
     # send over the username to the server
     self.client.sendto(usrname_input.encode(), (host, port))
@@ -131,10 +133,12 @@ class ClientSocket:
     # will receive back confirmation that username was sent successfully
     data = self.client.recv(1024).decode()
 
-    # client will enter a password
-    pwd_input = input("""
-    Please enter your password to log in: 
-    """)
+    # ensure nonempty password
+    while len(pwd_input) < 1:
+      # client will enter a password
+      pwd_input = input("""
+      Please enter your password to log in: 
+      """)
 
     # in the loop, send the password to the server
     self.client.sendto(pwd_input.encode(), (host, port))
@@ -173,6 +177,12 @@ class ClientSocket:
         usrname_input = input("""
         Please enter your username to log in: 
         """)
+
+        # ensure nonempty username
+        while len(usrname_input ) < 1:
+          usrname_input = input("""
+          Please enter your username to log in: 
+          """)
         # send over the username to the server
         self.client.sendto(usrname_input.encode(), (host, port))
 
@@ -183,6 +193,12 @@ class ClientSocket:
         Please enter your password to log in: 
         """)
 
+        while len(pwd_input) < 1:
+          # client will enter a password
+          pwd_input = input("""
+          Please enter your password to log in: 
+          """)
+          
         # in the loop, send the password to the server
         self.client.sendto(pwd_input.encode(), (host, port))
 
