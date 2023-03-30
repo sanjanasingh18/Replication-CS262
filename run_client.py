@@ -153,7 +153,8 @@ class ClientSocket:
       message = input("""We were unable to find an account associated with that username and password combination.
       Please type either 'create' to create a new account,
       'exit' to close the server connection/log out, 
-      or type 'login' to attempt to log in again.
+      or type 'login' to attempt to log in again. If you do not 
+      enter any of these options, you will be instructed to log in.
       """)
 
       # exit- close the connection
