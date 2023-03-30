@@ -1,4 +1,3 @@
-,Unnamed: 0.16,Unnamed: 0.15,Unnamed: 0.14,Unnamed: 0.13,Unnamed: 0.12,Unnamed: 0.11,Unnamed: 0.10,Unnamed: 0.9,Unnamed: 0.8,Unnamed: 0.7,Unnamed: 0.6,Unnamed: 0.5,Unnamed: 0.4,Unnamed: 0.3,Unnamed: 0.2,Unnamed: 0.1,Unnamed: 0,Username,Logged_in,Password,Messages,Timestamp_last_updated
-0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.0,0.0,0.0,0.0,last_updated,False,,[],2023-03-29 16:27:36.716739
-1,1,1,1,1,1,1,1,1,1,1,1,1,1,1.0,1.0,1.0,1.0,f1d96368-8c36-46aa-9563-8a3859cb2d29,False,hi,[],2023-03-29 16:26:50.415525
-2,2,2,2,2,2,2,2,2,2,2,2,2,2,,,,,fdae032c-2a9f-4098-a75e-29c572ce2465,False,hi,[],2023-03-29 16:27:36.716683
+,Unnamed: 0,Username,Logged_in,Password,Messages,Timestamp_last_updated
+0,0.0,last_updated,False,,[],2023-03-30 13:48:05.329592
+1,,254dca9a-81b6-4029-b40f-1495470cc0cf,False,hi,[],2023-03-30 13:48:05.327902
