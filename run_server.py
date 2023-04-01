@@ -224,15 +224,20 @@ class Server:
         self.account_list.get(username.strip()).setPassword(data)
 
         # update password in the dataframe and save it
-        self.df.loc[self.df["Username"] == username, "Password"] = data
+        self.df.at[username_index, "Password"] = data
+
+        # update the logged in variable to be True now that the user is logged in
+        self.df.at[username_index, "Logged_in"] = True
+
         # update the timestamp in the username's row
-        self.df.loc[self.df["Username"] == username, "Timestamp_last_updated"] =  pd.Timestamp.now()
+        self.df.at[username_index, "Timestamp_last_updated"] = pd.Timestamp.now()
 
         # update the timestamp value in the global timestamp last saved
         self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
 
         # have to sleep so it saves correctly.        
         time.sleep(0.05)
+        # save the csv file
         self.df.to_csv(state_path, header=True, index=True)
 
         # unlock mutex
@@ -309,7 +314,6 @@ class Server:
     def login_account(self, host, port, conn):
 
         # ask for login and password and then verify if it works
-
         # receive username from account
         username = conn.recv(1024).decode()
 
@@ -329,12 +333,21 @@ class Server:
         if (username.strip() in self.account_list):
             # get the password corresponding to this
             if password == self.account_list.get(username.strip()).getPassword():
+                # create a variable to hold the username index
+                username_index = self.df.index[self.df["Username"] == username.strip()].tolist()[0]
+
+                # updated login value at the username index
+                self.df.at[username_index, "Logged_in"] = True
+
                 # when the user attempts a log in, update the timestamp value in the username's row
-                self.df.loc[self.df["Username"] == username.strip(), "Timestamp_last_updated"] =  pd.Timestamp.now()
+                self.df.at[username_index, "Timestamp_last_updated"] = pd.Timestamp.now()
+
                 # update the timestamp value in the global timestamp last saved
                 self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
-                # Save it
+
+                # save updated CSV with the new username
                 self.df.to_csv(state_path, header=True, index=True)
+
                 # unlock mutex
                 self.account_list_lock.release()
                 confirmation = 'You have logged in. Thank you!'
@@ -343,11 +356,16 @@ class Server:
                 
             else:
                 # when the user attempts a log in, update the timestamp value in the username's row
-                self.df.loc[self.df["Username"] == username.strip(), "Timestamp_last_updated"] =  pd.Timestamp.now()
+                # create a variable to hold the username index
+                username_index = self.df.index[self.df["Username"] == username.strip()].tolist()[0]
+
                 # update the timestamp value in the global timestamp last saved
                 self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
-                # Save it
+
+                # save updated CSV with the new username
                 self.df.to_csv(state_path, header=True, index=True)
+
+
                 # unlock mutex
                 self.account_list_lock.release()
                 print("Account not found.")
@@ -358,12 +376,21 @@ class Server:
         elif (username.strip()[5:] in self.account_list):
             # get the password corresponding to this
             if password == self.account_list.get(username.strip()[5:]).getPassword():
+                # create a variable to hold the username index
+                username_index = self.df.index[self.df["Username"] == username.strip()[5:]].tolist()[0]
+
+                # updated login value at the username index
+                self.df.at[username_index, "Logged_in"] = True
+
                 # when the user attempts a log in, update the timestamp value in the username's row
-                self.df.loc[self.df["Username"] == username.strip()[5:], "Timestamp_last_updated"] =  pd.Timestamp.now()
+                self.df.at[username_index, "Timestamp_last_updated"] = pd.Timestamp.now()
+
                 # update the timestamp value in the global timestamp last saved
                 self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
-                # Save it
+
+                # save updated CSV with the new username
                 self.df.to_csv(state_path, header=True, index=True)
+
                 # unlock mutex
                 self.account_list_lock.release()
                 confirmation = 'You have logged in. Thank you!'
@@ -371,11 +398,14 @@ class Server:
                 return username.strip()[5:]
             else:
                 # when the user attempts a log in, update the timestamp value in the username's row
-                self.df.loc[self.df["Username"] == username.strip()[5:], "Timestamp_last_updated"] =  pd.Timestamp.now()
+                self.df.loc[self.df["Username"] == username.strip()[5:], "Timestamp_last_updated"] = pd.Timestamp.now()
+                
                 # update the timestamp value in the global timestamp last saved
                 self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
-                # Save it
+
+                # save updated CSV with the new username
                 self.df.to_csv(state_path, header=True, index=True)
+
                 # unlock mutex
                 self.account_list_lock.release()
                 print("Account not found.")
