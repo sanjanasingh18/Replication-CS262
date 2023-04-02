@@ -14,13 +14,25 @@ if __name__ == '__main__':
     hosts = ''
     ports = [8881, 8882, 8883, 8884, 8885]
     servers = []
+    all_server_indices = [0, 1, 2, 3, 4]
 
     for port in ports:
         new_server = Server(set_host=hosts, set_port=port)
         servers.append(new_server)
     
-    leader_index = servers[0]
-    leader_index.server_program(leader=True)
+    leader_index = 0
+    leader_server = servers[leader_index]
+    leader_server.server_program(leader=True)
+
+    # for each program here that isn't a leader, connect to the server
+    leader_host = hosts
+    leader_port = ports[leader_index]
+
+    non_leaders_indices = [x for x in all_server_indices if x != leader_index]
+    for non_leader in non_leaders_indices:
+        servers[non_leader].connect_to_leader.connect((leader_host, leader_port))
+
+
     # servers talk to each other where main leader server receives
     # client actions and then sends those actions to the other servers 
     # then other servers bind to the leader (servers can get information from the leader)
