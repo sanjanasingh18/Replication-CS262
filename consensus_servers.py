@@ -13,16 +13,18 @@ from run_server import Server
 if __name__ == '__main__':
     hosts = ''
     ports = [8881, 8882, 8883, 8884, 8885]
+    alt_ports = [8886, 8887, 8888, 8889, 8890]
     servers = []
     all_server_indices = [0, 1, 2, 3, 4]
 
-    for port in ports:
+    for port in alt_ports:
         new_server = Server(set_host=hosts, set_port=port)
+        new_server.initialize_server()
         servers.append(new_server)
     
     leader_index = 0
     leader_server = servers[leader_index]
-    leader_server.server_program(leader=True)
+    leader_server.run_server_program(leader=True)
 
     # for each program here that isn't a leader, connect to the server
     leader_host = hosts
@@ -30,6 +32,7 @@ if __name__ == '__main__':
 
     non_leaders_indices = [x for x in all_server_indices if x != leader_index]
     for non_leader in non_leaders_indices:
+        print("huuijiooh")
         servers[non_leader].connect_to_leader.connect((leader_host, leader_port))
 
 

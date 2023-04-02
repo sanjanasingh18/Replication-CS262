@@ -1,11 +1,14 @@
 import os
 import csv
 import pandas as pd
+import numpy as np
 import socket
 import math
 import time
 import uuid
+import io, hashlib, hmac
 from _thread import *
+from collections import Counter
 import threading
 from run_client import ClientSocket
 
@@ -73,9 +76,30 @@ class Server:
         else:
             self.server = sock
 
-    # Function to set up the csv file that will be used to save the current state of the server
-    def setup_server_state(self, filepath):
-        return
+    # Function to send client activity to other non leader servers so they can be updated
+    def send_action_to_nonleaders(self, action):
+        # conn.sendto()
+
+
+    # Function to hash our log file to check for server consensus 
+    def hash_server_file(self, filepath):
+        with open(filepath, "rb") as f:
+            digest = hashlib.file_digest(f, "sha1")
+        return digest.hexdigest()
+
+
+    # Function to compare the hashes for each server
+    def compare_server_hash(self, filepaths):
+        hashes = []
+        for filepath in filepaths:
+            hashes.append(self.hash_server_file(filepath))
+        # check if any values are equal to 3+ values for the consensus
+        # servers and save that hash in a variable
+        data = Counter(hashes)
+        correct_hash = data.most_common(1)[0][0]
+
+        return np.where(np.array(hashes) == correct_hash)
+        
     
     # Function to parse the server data state csv file and add to account_list
     def parse_csv_file(self):
@@ -539,13 +563,14 @@ class Server:
 
 
     # this program sets up the server + creates new threads for clients      
-    def server_program(self, leader=False):
+    def initialize_server(self):
         host = self.host
         port = self.port
         self.server.bind((host, port))
         self.server.listen()
         print('Server is active')
 
+    def run_server_program(self, leader=False):
         # while SOMETHING, listen!
         while True:
             conn, addr = self.server.accept()
@@ -560,5 +585,6 @@ class Server:
 
 # create a server object and run the server program!
 if __name__ == '__main__':
-    a = Server()
-    a.server_program()
+    server = Server()
+    server.initialize_server()
+    server.run_server_program()
