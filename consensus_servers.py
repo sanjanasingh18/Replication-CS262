@@ -20,7 +20,7 @@ if __name__ == '__main__':
         servers.append(new_server)
     
     leader_index = servers[0]
-    leader_index.server_program()
+    leader_index.server_program(leader=True)
     # servers talk to each other where main leader server receives
     # client actions and then sends those actions to the other servers 
     # then other servers bind to the leader (servers can get information from the leader)

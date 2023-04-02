@@ -535,7 +535,7 @@ class Server:
 
 
     # this program sets up the server + creates new threads for clients      
-    def server_program(self):
+    def server_program(self, leader=False):
         host = self.host
         port = self.port
         self.server.bind((host, port))
