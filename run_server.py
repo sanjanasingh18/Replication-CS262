@@ -33,7 +33,7 @@ class Server:
             self.port = set_port
 
         # add a socket to connect to the leader
-        self.connect_to_leader = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.connect_to_other_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         
         # this commented line was to check that you are able to print account_list usernames
         # of different lengths
@@ -75,10 +75,6 @@ class Server:
                             socket.AF_INET, socket.SOCK_STREAM)
         else:
             self.server = sock
-
-    # Function to send client activity to other non leader servers so they can be updated
-    def send_action_to_nonleaders(self, action):
-        # conn.sendto()
 
 
     # Function to hash our log file to check for server consensus 

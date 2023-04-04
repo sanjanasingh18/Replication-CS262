@@ -4,7 +4,7 @@ import math
 import time
 import uuid
 
-set_port = 8886
+set_port = 8887
 set_host = ''
 # set_host = 'dhcp-10-250-7-238.harvard.edu'
 #[uuid: account info ]
@@ -252,6 +252,7 @@ class ClientSocket:
       port = set_port
 
       self.client.connect((host, port))
+      self.client.sendto("client".encode(), (host, port))
 
       # handle initial information flow- either will login or create a new account
       # You need to either log in or create an account first
