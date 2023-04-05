@@ -733,7 +733,8 @@ class Server:
         if self.is_leader:
             t = Timer(30.0, self.send_heartbeat_actions)
             t.start() # after 30 seconds, "hello, world" will be printed
-            t.cancel() # cancels execution, this only works before the 30 seconds is elapsed
+            # if you're no longer leader, want to cancel it
+            # t.cancel() # cancels execution, this only works before the 30 seconds is elapsed
         
         # set up the receive heartbeat function if you are a follower
 
