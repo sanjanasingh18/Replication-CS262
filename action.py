@@ -1,6 +1,5 @@
 
-
-class Action:
+class ClientAction:
     def __init__(self,
                  action,
                  client_username='',
@@ -15,48 +14,48 @@ class Action:
         self.message = message
         self.available_messages = available_messages
 
-        def setAction(self, action):
-            self.action = action
+    def setAction(self, action):
+        self.action = action
 
-        def setClientUsername(self, client_username):
-            self.client_username = client_username
+    def setClientUsername(self, client_username):
+        self.client_username = client_username
 
-        def setPassword(self, password):
-            self.password = password
+    def setPassword(self, password):
+        self.password = password
 
-        def setRecipientUsername(self, recipient_username):
-            self.recipient_username = recipient_username
+    def setRecipientUsername(self, recipient_username):
+        self.recipient_username = recipient_username
 
-        def setMessages(self, message):
-            self.message = message
+    def setMessages(self, message):
+        self.message = message
 
-        def setAvailableMessages(self, available_messages):
-            self.available_messages = available_messages
+    def setAvailableMessages(self, available_messages):
+        self.available_messages = available_messages
 
-        def getAction(self, action):
-            return self.action
+    def getAction(self, action):
+        return self.action
 
-        def getClientUsername(self, client_username):
-            return self.client_username
+    def getClientUsername(self, client_username):
+        return self.client_username
 
-        def getPassword(self, password):
-            return self.password
+    def getPassword(self, password):
+        return self.password
 
-        def getRecipientUsername(self, recipient_username):
-            self.recipient_username = recipient_username
+    def getRecipientUsername(self, recipient_username):
+        self.recipient_username = recipient_username
 
-        def getMessages(self, message):
-            return self.message
+    def getMessages(self, message):
+        return self.message
 
-        def getAvailableMessages(self, available_messages):
-            return self.available_messages
+    def getAvailableMessages(self, available_messages):
+        return self.available_messages
 
-        def exportAction(self):
-            message = self.action + "we_hate_cs262" +\
-                self.client_username + "we_hate_cs262" +\
-                self.password + "we_hate_cs262" +\
-                self.recipient_username + "we_hate_cs262" +\
-                self.message + "we_hate_cs262" +\
-                self.available_messages
+    def exportAction(self):
+        message = self.action + "we_hate_cs262" +\
+            self.client_username + "we_hate_cs262" +\
+            self.password + "we_hate_cs262" +\
+            self.recipient_username + "we_hate_cs262" +\
+            self.message + "we_hate_cs262" +\
+            self.available_messages
 
-            return message
+        return message
