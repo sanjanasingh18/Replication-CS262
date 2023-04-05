@@ -30,10 +30,12 @@ class Server:
     def __init__(self, set_port, is_leader=False, set_host=None, sock=None):
         self.port = int(set_port)
         self.is_leader = is_leader
-        self.curr_leader = self.ports[0]
 
         # create port list for testing purposes
         self.ports = ports
+
+        # set the current leader- when initialized, leader should be the first port
+        self.curr_leader = self.ports[0]      
 
         # set host and port attributes
         if set_host is None:
@@ -743,6 +745,8 @@ class Server:
 # create a server object and run the server program!
 if __name__ == '__main__':
     # to create a leader server, enter something as a command line arg
+    # first command line input = port #, second command line input = is_leader
+    # default is_leader value = False; only need second arg if is_leader = True
     server = Server(set_port=sys.argv[1], is_leader=sys.argv[2])
     server.initialize_server()
     server.run_server_program()
