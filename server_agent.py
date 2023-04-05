@@ -13,6 +13,7 @@ import hmac
 from _thread import *
 from collections import Counter
 import threading
+from threading import Timer
 from run_client import ClientSocket
 from action import Action
 
@@ -727,8 +728,16 @@ class Server:
         port = self.port
 
         self.connect_to_other_servers()
-
-        # while SOMETHING, listen!
+        
+        # set up the send heartbeat function if you are a leader
+        if self.is_leader:
+            t = Timer(30.0, send_heartbeat_actions)
+            t.start() # after 30 seconds, "hello, world" will be printed
+            t.cancel() # cancels execution, this only works before the 30 seconds is elapsed
+        
+        # set up the receive heartbeat function if you are a follower
+        
+        # while True, listen!
         while True:
             conn, addr = self.server.accept()
 
