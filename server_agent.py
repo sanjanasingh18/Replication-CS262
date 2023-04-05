@@ -731,12 +731,12 @@ class Server:
         
         # set up the send heartbeat function if you are a leader
         if self.is_leader:
-            t = Timer(30.0, send_heartbeat_actions)
+            t = Timer(30.0, self.send_heartbeat_actions)
             t.start() # after 30 seconds, "hello, world" will be printed
             t.cancel() # cancels execution, this only works before the 30 seconds is elapsed
         
         # set up the receive heartbeat function if you are a follower
-        
+
         # while True, listen!
         while True:
             conn, addr = self.server.accept()
