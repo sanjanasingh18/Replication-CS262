@@ -653,6 +653,9 @@ class Server:
                         actions.encode(), (self.host, other_server_port))
                 print("Sent actions: " + actions + " to " + str(other_server_port))
 
+            # clear the heart beat actions list
+            self.heartbeat_actions = []
+
 
     # function for non leader servers to receive actions from leader and process the actions
     def receive_heartbeat_action(self):
@@ -694,8 +697,73 @@ class Server:
                 # once we have recieved the list of action from the leader, parse the actions list
                 self.parse_leader_actions(actions)
 
+    # function to handle parsing and saving the create client action 
+    def save_create_action(self, server_action):
+        if server_action[1]:
+            # get the username for the new client
+            username = server_action[1]
+            password = server_action[2]
+
+            # if this username has already been added to our dataframe
+            if self.df.index[self.df["Username"] == username.strip()].tolist() != []:
+                # get the index for the username that exists already
+                username_index = self.df.index[self.df["Username"] == username.strip()].tolist()[
+                    0]
+                self.df.at[username_index, "Password"] = password
+                # update the timestamp at that index
+                self.df.at[username_index,
+                        "Timestamp_last_updated"] = pd.Timestamp.now()
+
+            # if the username has not yet been added to our dataframe
+            else: 
+                # make an index for the new username at the end of the dataframe
+                username_index = len(self.df.index)
+
+                # make a new row where Username = username + append it to dataframe
+                self.df.at[username_index, "Username"] = username
+                self.df.at[username_index, "Password"] = password
+                self.df.at[username_index, "Logged_in"] = False
+                self.df.at[username_index, "Messages"] = []
+                # update the timestamp at that index
+                self.df.at[username_index,
+                        "Timestamp_last_updated"] = pd.Timestamp.now()
+
+        # update the timestamp value in the global timestamp last saved
+        self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
+
+        # save updated CSV with the new username
+        self.df.to_csv(self.state_path, header=True, index=False)
+        print("it saved? to the CSV file ??")
+
+
     # function to parse the list of actions we receive from the leader server
     def parse_leader_actions(self, actions):
+        action_log = actions.split("we_love_cs262")
+        # [[create], [create, username], [create, username, password], [exit]]
+        for action in action_log:
+            # server action will be in the format
+            # ["action", "client_username", "password", "recipient_username", "message", "available_messages"]
+            server_action = action.split("we_hate_cs262")
+
+            if server_action[0] == "login":
+                # TODO add this logic
+                print("not dnoe yet")
+            
+            elif server_action[0] == "create":
+                self.save_create_action(server_action)
+
+            elif server_action[0] == "delete":
+                # TODO add this logic
+                print("not done yet")
+
+            elif server_action[0] == "sendmsg!":
+                # TODO add this logic
+                print("not done yet")
+
+            elif server_action[0] == "msgspls":
+                # TODO add this logic
+                print("not done yet")
+
         print("wooo")
 
 

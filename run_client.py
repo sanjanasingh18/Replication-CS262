@@ -61,6 +61,10 @@ class ClientSocket:
   def setMessages(self, messages):
     self.messages = messages
 
+  # TODO give server acces to client's login
+  # state when we do transfer power between servers
+  # def setLoginStatus(self, )
+
 
   # Function to create a new account
   def create_client_username(self, message, host, port):
