@@ -164,6 +164,8 @@ class Server:
             client_socket.setUsername(row["Username"])
             # update the password value for the client socket
             client_socket.setPassword(row["Password"])
+            # update the logged in status for the client socket
+            client_socket.setLoggedIn(row["Logged_in"])
             # update the messages value for the client socket
             client_socket.setMessages(messages)
 
@@ -211,7 +213,10 @@ class Server:
         current_messages = self.account_list.get(
             recipient_username).getMessages()
 
-        # current_messages.append(message_string)
+        # generate a string of current messages to be added to our action object and sent to the other servers
+        current_messages_string = current_messages[0]
+        for message in current_messages[1:]:
+            current_messages_string += "we_like_cs262" + message
 
         # update the messages value in the username's row in the dataframe
         self.df.at[username_index, "Messages"] = current_messages
@@ -220,6 +225,15 @@ class Server:
                    "Timestamp_last_updated"] = pd.Timestamp.now()
         # update the timestamp value in the global timestamp last saved
         self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
+
+        # create a variable to store the action object that will be used to send this
+        # action to the other servers
+        client_action = ClientAction(action='sendmsg',
+                                     recipient_username=recipient_username, 
+                                     current_messages=current_messages_string)
+
+        # save the current action object to the list of actions to send out every heart beat
+        self.save_client_action(client_action)
 
         # have to sleep so it saves correctly.
         time.sleep(0.05)
@@ -320,6 +334,9 @@ class Server:
         # update the logged in variable to be True now that the user is logged in
         self.df.at[username_index, "Logged_in"] = True
 
+        # set the logged in value in the client action object
+        client_action.setLoggedIn("true")
+
         # update the timestamp in the username's row
         self.df.at[username_index,
                    "Timestamp_last_updated"] = pd.Timestamp.now()
@@ -406,8 +423,8 @@ class Server:
         # then, send over the final message
         conn.sendto(final_msg.encode(), (host, port))
 
-    # function to log in to an account
 
+    # function to log in to an account
     def login_account(self, host, port, conn):
 
         # ask for login and password and then verify if it works
@@ -449,6 +466,14 @@ class Server:
 
                 # unlock mutex
                 self.account_list_lock.release()
+
+                # create a variable to store the action object that will be used to send this
+                # action to the other servers
+                client_action = ClientAction(action='login', client_username=username.strip(), logged_in='true')
+
+                # save the current action object to the list of actions to send out every heart beat
+                self.save_client_action(client_action)
+
                 confirmation = 'You have logged in. Thank you!'
                 self.send_client_messages(
                     username.strip(), host, port, conn, confirmation)
@@ -490,6 +515,14 @@ class Server:
 
                 # unlock mutex
                 self.account_list_lock.release()
+
+                # create a variable to store the action object that will be used to send this
+                # action to the other servers
+                client_action = ClientAction(action='login', client_username=username.strip()[5:], logged_in='true')
+
+                # save the current action object to the list of actions to send out every heart beat
+                self.save_client_action(client_action)
+
                 confirmation = 'You have logged in. Thank you!'
                 self.send_client_messages(
                     username.strip(), host, port, conn, confirmation)
@@ -520,7 +553,6 @@ class Server:
             conn.sendto(message.encode(), (host, port))
 
     # function to delete a client account
-
     def delete_account(self, username, host, port, conn):
         # You can only delete your account once you are logged in
         # lock mutex
@@ -536,6 +568,13 @@ class Server:
 
             # remove the row at the username_index from our dataframe
             self.df.drop(index=username_index, inplace=True)
+
+            # create a variable to store the action object that will be used to send this
+            # action to the other servers
+            client_action = ClientAction(action='delete', client_username=username)
+
+            # save the current action object to the list of actions to send out every heart beat
+            self.save_client_action(client_action)
 
             # Save it
             self.df.to_csv(self.state_path, header=True, index=False)
@@ -554,6 +593,7 @@ class Server:
             print(message)
             conn.sendto(message.encode(), (host, port))
 
+
     # function to list all active (non-deleted) accounts
     # add a return statement so it is easier to Unittest
     def list_accounts(self):
@@ -566,6 +606,38 @@ class Server:
         # updated to return the length of the string version of this list
         # as it will be sent over the wire as a string
         return len(listed_accounts), listed_accounts
+
+
+    # function to handle when a client logs out
+    def client_logged_out(self, curr_user):
+
+        print("updated client log in status")
+        # update the logged in value in account lists
+        self.account_list[curr_user].setLoggedIn(False)
+
+        # create a variable to hold the username index in our dataframe
+        username_index = self.df.index[self.df["Username"] == curr_user.strip()].tolist()[
+            0]
+
+        # updated login value at the username index in our dataframe
+        self.df.at[username_index, "Logged_in"] = False
+
+        # when the user attempts a log in, update the timestamp value in the username's row
+        self.df.at[username_index,
+                    "Timestamp_last_updated"] = pd.Timestamp.now()
+
+        # update the timestamp value in the global timestamp last saved
+        self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
+
+        # create a variable to store the action object that will be used to send this
+        # action to the other servers
+        client_action = ClientAction(action='logout', client_username=curr_user.strip(), logged_in='false')
+
+        # save the current action object to the list of actions to send out every heart beat
+        self.save_client_action(client_action)
+
+        # save updated CSV with the new username
+        self.df.to_csv(self.state_path, header=True, index=False)
 
 
     # function handle different cases when a client connects to the server versus when 
@@ -609,7 +681,7 @@ class Server:
 
         # for each action in the action list
         for action in self.heartbeat_actions:
-            actions_string += (action + "we_love_cs262")
+            actions_string += action + "we_love_cs262"
         
         # return the actions string
         return actions_string
@@ -697,12 +769,41 @@ class Server:
                 # once we have recieved the list of action from the leader, parse the actions list
                 self.parse_leader_actions(actions)
 
+
+    # function to handle parsing and saving the client login action 
+    def save_login_action(self, server_action):
+        # get the username of the client that logged in
+        username = server_action[1]
+        # get the log in status of user
+        logged_in = server_action[3].lower() == "true"
+
+        # create a variable to hold the username index
+        username_index = self.df.index[self.df["Username"] == username.strip()].tolist()[
+            0]
+
+        # updated login value at the username index
+        self.df.at[username_index, "Logged_in"] = logged_in
+
+        # when the user attempts a log in, update the timestamp value in the username's row
+        self.df.at[username_index,
+                    "Timestamp_last_updated"] = pd.Timestamp.now()
+
+        # update the timestamp value in the global timestamp last saved
+        self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
+
+        # save updated CSV with the new username
+        self.df.to_csv(self.state_path, header=True, index=False)
+
+        print("succesfully updated login status to logged in")
+
+
     # function to handle parsing and saving the create client action 
     def save_create_action(self, server_action):
         if server_action[1]:
             # get the username for the new client
             username = server_action[1]
             password = server_action[2]
+            logged_in = server_action[3] == "true"
 
             # if this username has already been added to our dataframe
             if self.df.index[self.df["Username"] == username.strip()].tolist() != []:
@@ -710,6 +811,8 @@ class Server:
                 username_index = self.df.index[self.df["Username"] == username.strip()].tolist()[
                     0]
                 self.df.at[username_index, "Password"] = password
+                # update the user to be logged in
+                self.df.at[username_index, "Logged_in"] = logged_in
                 # update the timestamp at that index
                 self.df.at[username_index,
                         "Timestamp_last_updated"] = pd.Timestamp.now()
@@ -722,7 +825,8 @@ class Server:
                 # make a new row where Username = username + append it to dataframe
                 self.df.at[username_index, "Username"] = username
                 self.df.at[username_index, "Password"] = password
-                self.df.at[username_index, "Logged_in"] = False
+                # update the user to be logged in
+                self.df.at[username_index, "Logged_in"] = logged_in
                 self.df.at[username_index, "Messages"] = []
                 # update the timestamp at that index
                 self.df.at[username_index,
@@ -735,6 +839,83 @@ class Server:
         self.df.to_csv(self.state_path, header=True, index=False)
         print("it saved? to the CSV file ??")
 
+    # function to handle parsing and saving the logout client action 
+    def save_logout_action(self, server_action):
+        # get the username of the client that logged in
+        username = server_action[1]
+        # get the log in status of user
+        logged_in = server_action[3].lower() == "true"
+
+        # create a variable to hold the username index
+        username_index = self.df.index[self.df["Username"] == username.strip()].tolist()[
+            0]
+
+        # updated login value at the username index
+        self.df.at[username_index, "Logged_in"] = logged_in
+
+        # when the user attempts a log in, update the timestamp value in the username's row
+        self.df.at[username_index,
+                    "Timestamp_last_updated"] = pd.Timestamp.now()
+
+        # update the timestamp value in the global timestamp last saved
+        self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
+
+        # save updated CSV with the new username
+        self.df.to_csv(self.state_path, header=True, index=False)
+
+        print("succesfully updated login status to logged out.")
+
+    # function to handle parsing and saving the delete client action 
+    def save_delete_action(self, server_action):
+        # get the username of the client that logged in
+        username = server_action[1]
+
+        # get the index value of the current client username
+        username_index = self.df.index[self.df["Username"] == username].tolist()[
+            0]
+
+        # remove the row at the username_index from our dataframe
+        self.df.drop(index=username_index, inplace=True)
+
+        # Save it to dataframe
+        self.df.to_csv(self.state_path, header=True, index=False)
+
+        print("successfully deleted client account:", username)
+        
+
+    # function to handle parsing and saving the send message to another user client action 
+    def save_sendmsg_action(self, server_action):
+        # get the username of the recipient
+        recipient_username = server_action[4]
+
+        # update messages in the dataframe and save it
+        username_index = self.df.index[self.df["Username"] == recipient_username].tolist()[
+            0]
+
+        # set the current_messages variable to be equal to the messages stored in the client socket
+        print("HELLLOOOOO", server_action[5])
+        current_messages = server_action[5].split("we_like_cs262")
+        print("MESSAGES>!", current_messages[0])
+
+        # update the messages value in the username's row in the dataframe
+        self.df.at[username_index, "Messages"] = current_messages
+        # update the timestamp value in the username's row
+        self.df.at[username_index,
+                   "Timestamp_last_updated"] = pd.Timestamp.now()
+        # update the timestamp value in the global timestamp last saved
+        self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
+
+        # have to sleep so it saves correctly.
+        time.sleep(0.05)
+        self.df.to_csv(self.state_path, header=True, index=False)
+
+
+    # function to handle parsing and saving the get messages client action 
+    def save_msgspls_action(self, server_action):
+        # get the username of the client
+        username = server_action[1]
+        print("heyoo")
+
 
     # function to parse the list of actions we receive from the leader server
     def parse_leader_actions(self, actions):
@@ -746,23 +927,26 @@ class Server:
             server_action = action.split("we_hate_cs262")
 
             if server_action[0] == "login":
-                # TODO add this logic
-                print("not dnoe yet")
+                self.save_login_action(server_action)
             
             elif server_action[0] == "create":
                 self.save_create_action(server_action)
 
             elif server_action[0] == "delete":
-                # TODO add this logic
-                print("not done yet")
+                self.save_delete_action(server_action)
 
-            elif server_action[0] == "sendmsg!":
+            elif server_action[0] == "sendmsg":
+                self.save_sendmsg_action(server_action)
                 # TODO add this logic
                 print("not done yet")
 
             elif server_action[0] == "msgspls":
+                self.save_msgspls_action(server_action)
                 # TODO add this logic
                 print("not done yet")
+
+            elif server_action[0] == "logout":
+                self.save_logout_action(server_action)
 
         print("wooo")
 
@@ -829,6 +1013,10 @@ class Server:
             # check if client request is to get available messages
             elif data[:8] == "msgspls!":
                 self.send_client_messages(curr_user, host, port, conn)
+
+            # check if the client is logging out with our secret log out code
+            elif data == "~\|/~<3exit":
+                self.client_logged_out(curr_user)
 
 
     # function to establish connections between the servers

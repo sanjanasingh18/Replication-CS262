@@ -4,14 +4,16 @@ class ClientAction:
                  action,
                  client_username='',
                  password='',
+                 logged_in='',
                  recipient_username='',
-                 message='',
+                 current_messages='',
                  available_messages=''):
-        self.action = action
+        self.action = action.lower()
         self.client_username = client_username
         self.password = password
+        self.logged_in = logged_in.lower()
         self.recipient_username = recipient_username
-        self.message = message
+        self.current_messages = current_messages
         self.available_messages = available_messages
 
     def setAction(self, action):
@@ -23,39 +25,46 @@ class ClientAction:
     def setPassword(self, password):
         self.password = password
 
+    def setLoggedIn(self, logged_in):
+        self.logged_in = logged_in
+
     def setRecipientUsername(self, recipient_username):
         self.recipient_username = recipient_username
 
-    def setMessages(self, message):
-        self.message = message
+    def setCurrentMessages(self, current_messages):
+        self.current_messages = current_messages
 
     def setAvailableMessages(self, available_messages):
         self.available_messages = available_messages
 
-    def getAction(self, action):
+    def getAction(self):
         return self.action
 
-    def getClientUsername(self, client_username):
+    def getClientUsername(self):
         return self.client_username
 
-    def getPassword(self, password):
+    def getPassword(self):
         return self.password
 
-    def getRecipientUsername(self, recipient_username):
-        self.recipient_username = recipient_username
+    def getLoggedIn(self):
+        return self.logged_in
 
-    def getMessages(self, message):
-        return self.message
+    def getRecipientUsername(self):
+        return self.recipient_username
 
-    def getAvailableMessages(self, available_messages):
+    def getCurrentMessages(self):
+        return self.current_messages
+
+    def getAvailableMessages(self):
         return self.available_messages
 
     def exportAction(self):
         message = self.action + "we_hate_cs262" +\
             self.client_username + "we_hate_cs262" +\
             self.password + "we_hate_cs262" +\
+            self.logged_in + "we_hate_cs262" +\
             self.recipient_username + "we_hate_cs262" +\
-            self.message + "we_hate_cs262" +\
+            self.current_messages + "we_hate_cs262" +\
             self.available_messages
 
         return message

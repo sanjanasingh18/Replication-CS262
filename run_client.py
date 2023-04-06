@@ -34,9 +34,12 @@ class ClientSocket:
   def getStatus(self):
     return self.logged_in
 
-  def setStatus(self, update_status):
-    self.logged_in = update_status
+  def setLoggedIn(self, logged_in):
+    self.logged_in = logged_in
 
+  def getLoggedIn(self):
+    return self.logged_in
+  
   def setUsername(self, username):
     self.username = username
 
@@ -63,7 +66,6 @@ class ClientSocket:
 
   # TODO give server acces to client's login
   # state when we do transfer power between servers
-  # def setLoginStatus(self, )
 
 
   # Function to create a new account
@@ -163,6 +165,9 @@ class ClientSocket:
 
       # exit- close the connection
       if message.lower().strip() == 'exit':
+        # send a message to server to indicate this user is logging out
+        self.client.sendto("~\|/~<3exit".encode(), (host, port))
+
         print(f'Connection closed.')
         self.logged_in = False
         self.client.close()
@@ -281,6 +286,9 @@ class ClientSocket:
       
         # exit function- may want to exit early
         elif message.lower().strip() == 'exit':
+          # send a message to server to indicate this user is logging out
+          self.client.sendto("~\|/~<3exit".encode(), (host, port))
+
           print(f'Connection closed.')
           self.client.close()
           self.logged_in = False
@@ -418,7 +426,9 @@ class ClientSocket:
             available_msgs = data.split('we_love_cs262')[1:]
             self.deliver_available_msgs(available_msgs)
 
-        self.logged_in = False
+        # send a message to server to indicate this user is logging out
+        self.client.sendto("~\|/~<3exit".encode(), (host, port))
+        
         print(f'Connection closed.')
         self.client.close()
 
