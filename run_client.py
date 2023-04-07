@@ -12,7 +12,7 @@ set_host = ''
 
 class ClientSocket:
 
-  def __init__(self, client=None):
+  def __init__(self, ports=[8887, 8888, 8888], client=None):
     # We store if the client is currently logged in (to see if they have permission to
     # send/receive messages), their username, password, and 
     # queue of messages that they have received.
@@ -24,10 +24,16 @@ class ClientSocket:
     self.password = ''
     self.messages = []
 
+    # create three sockets to connec to each of the servers
+    self.client_sockets = []
+    self.ports = ports
+
     if client is None:
-      self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    else:
-      self.client = client
+      for _ in self.ports:
+        self.client_sockets.append(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
+
+    self.client = self.client_sockets[0]
+    self.leader_server_port = self.ports[0]
 
   # basic get/set functions to allow for the server to update these values
 
@@ -69,14 +75,21 @@ class ClientSocket:
 
 
   # Function to create a new account
-  def create_client_username(self, message, host, port):
+  def create_client_username(self, client_message, host):
     # message contains 'create'- send this to the server
     # so the server runs the create function
 
-    self.client.sendto(message.encode(), (host, port))
+    self.client.sendto(client_message.encode(), (host, self.leader_server_port))
 
     # server will send back a username (UUID)
     data = self.client.recv(1024).decode()
+
+    # check if the leader server has changed
+    if self.check_server_leader(data):
+      print("Internal error. You will be given new login credentials.")
+      # run the function again
+      self.create_client_username(client_message, host)
+      return
 
     # Update ClientSocket object username and log in fields
     self.username = data
@@ -95,10 +108,18 @@ class ClientSocket:
     self.password = pwd_client
 
     # Inform the server of the password
-    self.client.sendto((pwd_client).encode(), (host, port))
+    self.client.sendto((pwd_client).encode(), (host, self.leader_server_port))
 
     # The server will confirm the password
     confirmation_from_server = self.client.recv(1024).decode()
+
+    # check if the leader server has changed
+    if self.check_server_leader(confirmation_from_server):
+      print("Internal error. You will be given new login credentials.")
+      # run the function again
+      self.create_client_username(client_message, host)
+      return
+
     print(confirmation_from_server)
     return self.getUsername()
 
@@ -120,11 +141,11 @@ class ClientSocket:
 
 
   # Function to login to a client account
-  def login_client_account(self, message, host, port, usrname_input="", pwd_input=""):
+  def login_client_account(self, client_message, host, usrname_input="", pwd_input=""):
 
     # ensure that the server knows that it is the login function
     # message says 'login'
-    self.client.sendto(message.encode(), (host, port))
+    self.client.sendto(client_message.encode(), (host, self.leader_server_port))
 
     # ensure nonempty username
     while len(usrname_input) < 1:
@@ -134,10 +155,17 @@ class ClientSocket:
       """)
 
     # send over the username to the server
-    self.client.sendto(usrname_input.encode(), (host, port))
+    self.client.sendto(usrname_input.encode(), (host, self.leader_server_port))
 
     # will receive back confirmation that username was sent successfully
     data = self.client.recv(1024).decode()
+
+    # check if the leader server has changed
+    if self.check_server_leader(data):
+      print("Internal error. Please input your username again.")
+      # run the function again
+      self.login_client_account(client_message, host, usrname_input="", pwd_input="")
+      return
 
     # ensure nonempty password
     while len(pwd_input) < 1:
@@ -147,10 +175,16 @@ class ClientSocket:
       """)
 
     # in the loop, send the password to the server
-    self.client.sendto(pwd_input.encode(), (host, port))
+    self.client.sendto(pwd_input.encode(), (host, self.leader_server_port))
 
     # server will send back feedback on whether this was a valid login or not
     data = self.client.recv(1024).decode()
+
+    # check if the leader server has changed
+    if self.check_server_leader(data):
+      print("Internal error. You will be reprompted to log in.")
+      # run the function again
+      self.login_client_account(client_message, host, usrname_input="", pwd_input="")
 
     # stay in for loop until you 
     while data[:30] != 'You have logged in. Thank you!':
@@ -166,7 +200,7 @@ class ClientSocket:
       # exit- close the connection
       if message.lower().strip() == 'exit':
         # send a message to server to indicate this user is logging out
-        self.client.sendto("~\|/~<3exit".encode(), (host, port))
+        self.client.sendto("~\|/~<3exit".encode(), (host, self.leader_server_port))
 
         print(f'Connection closed.')
         self.logged_in = False
@@ -175,14 +209,14 @@ class ClientSocket:
 
       # create new account- reroute to that function
       elif message.lower().strip() == 'create':
-        self.create_client_username(message, host, port)
+        self.create_client_username(message, host)
         break
 
 
       else: 
         # requery the client to restart login process
         inform_status = 'login'
-        self.client.sendto(inform_status.encode(), (host, port))
+        self.client.sendto(inform_status.encode(), (host, self.leader_server_port))
 
         usrname_input = input("""
         Please enter your username to log in: 
@@ -193,11 +227,19 @@ class ClientSocket:
           usrname_input = input("""
           Please enter your username to log in: 
           """)
+
         # send over the username to the server
-        self.client.sendto(usrname_input.encode(), (host, port))
+        self.client.sendto(usrname_input.encode(), (host, self.leader_server_port))
 
         # will receive back confirmation that username was sent successfully
         data = self.client.recv(1024).decode()
+
+        # check if the leader server has changed
+        if self.check_server_leader(data):
+          print("Internal error. Please input your username again.")
+          # run the function again
+          self.login_client_account(client_message, host, usrname_input="", pwd_input="")
+          return
 
         pwd_input = input("""
         Please enter your password to log in: 
@@ -210,10 +252,17 @@ class ClientSocket:
           """)
           
         # in the loop, send the password to the server
-        self.client.sendto(pwd_input.encode(), (host, port))
+        self.client.sendto(pwd_input.encode(), (host, self.leader_server_port))
 
         # server will send back feedback on whether this was a valid login or not
         data = self.client.recv(1024).decode()
+
+        # check if the leader server has changed
+        if self.check_server_leader(data):
+          print("Internal error. You will be reprompted to log in.")
+          # run the function again
+          self.login_client_account(client_message, host, usrname_input="", pwd_input="")
+          return
     
     # NOW THIS WILL INSTEAD BE the confirmation + str length
     # can exit while loop on success (logged in) or if the loop breaks (with create/exit)
@@ -222,11 +271,17 @@ class ClientSocket:
       len_msgs = int(data[30:])
 
       confirmation_msg = "ok"
-      self.client.sendto(confirmation_msg.encode(), (host, port))
+      self.client.sendto(confirmation_msg.encode(), (host, self.leader_server_port))
 
       # retrieve all messages (of the length necessary)
 
       data = self.client.recv(len_msgs).decode()
+
+      # check if the leader server has changed
+      if self.check_server_leader(data):
+        # run the function again
+        self.get_client_messages(host)
+        return
 
       print("Successfully logged in.")
       self.logged_in = True
@@ -237,200 +292,250 @@ class ClientSocket:
           self.deliver_available_msgs(available_msgs)
 
   # function to delete the client account
-  def delete_client_account(self, message, host, port):
+  def delete_client_account(self, host):
 
     # send a message that is 'delete' followed by the username to be parsed by the other side
     # we do not have a confirmation to delete as it takes effort to type 'delete' so it is difficult
     # to happen by accident
 
     message = "delete" + str(self.username)
-    self.client.sendto(message.encode(), (host, port))
+    self.client.sendto(message.encode(), (host, self.leader_server_port))
     
-    # erver sends back status of whether account was successfully deleted
+    # server sends back status of whether account was successfully deleted
     data = self.client.recv(1024).decode()
+
+    # check if the leader server has changed
+    if self.check_server_leader(data):
+      self.delete_client_account(host)
+      return
+
     if data == 'Account successfully deleted.':
       self.logged_in = False
       print("Successfully deleted account.")
     else:
-      print("Unsuccessfully deleted account.")
+      self.logged_in = False
+      print("Account already deleted")
+
+
+  def check_server_leader(self, message):
+    # check if the server is telling us that we have a new leader
+    if message[:9] == "nEwLeAdEr":
+      # get the port and port index of the new leader
+      self.leader_server_port = int(message[9:])
+      leader_port_ind = self.ports.index(self.leader_server_port)
+      # set the socket we communicate on to be the leader server
+      self.client = self.client_sockets[leader_port_ind]
+
+      # return True if we have elected a new leader
+      return True
+    
+    # return False otherwise
+    return False
+
+
+  # functon to get client messages from the server at any time
+  def get_client_messages(self, host):
+    # check remaining msgs
+    message = 'msgspls!'
+
+    # inform server that you want to get new messages
+    self.client.sendto(message.encode(), (host, self.leader_server_port))
+
+    # server will send back the length of messages
+    len_msgs = self.client.recv(1024).decode()
+
+    # check if the leader server has changed
+    if self.check_server_leader(len_msgs):
+      # inform server that you want to get new messages again
+      self.get_client_messages(host)
+      return
+
+    # send message to control info flow (ensure you are ready to decode msg)
+    message = 'ok'
+    self.client.sendto(message.encode(), (host, self.leader_server_port))
+
+    # server will send back messages of proper length
+    data = self.client.recv(int(len_msgs)).decode()
+
+    # check if the leader server has changed
+    if self.check_server_leader(data):
+      self.get_client_messages(host)
+      return
+    
+    if data != 'No messages available':
+      available_msgs = data.split('we_love_cs262')[1:]
+      self.deliver_available_msgs(available_msgs)
+
+
+  # function to list all accounts on the server
+  def list_server_accounts(self, client_message, host):
+    # tell the server we want to list accounts
+    self.client.sendto(client_message.encode(), (host, self.leader_server_port))
+    # will receive from server the length of the account_list
+    len_list = self.client.recv(1024).decode()
+
+    # send confirmation to control input flow
+    message = 'Ok'
+    self.client.sendto(message.encode(), (host, self.leader_server_port))
+
+    # Receive the message data- decode the correct length
+    data = self.client.recv(int(len_list)).decode()
+
+    # check if the leader server has changed
+    if self.check_server_leader(data):
+      self.list_server_accounts(client_message, host)
+      return
+    
+    print('Usernames: ' + data)
+
+  # function to send a message to another client
+  def send_message(self, client_message, host):
+    # tell the server we want to send a message to a recipient
+    self.client.sendto(('sendmsg' + self.getUsername() + "_" + client_message).encode(), (host, self.leader_server_port))
+    data = self.client.recv(1024).decode()
+
+    # check if the leader server has changed
+    if self.check_server_leader(data):
+      self.send_message(client_message, host)
+      return
+
+    # if username is found, server will return 'User found. What is your message: '
+    if data == "User found. Please enter your message: ":
+      message = input(data)
+      while message == "":
+        message = input("Please enter a non-empty message to send: ")
+      self.client.sendto(message.encode(), (host, self.leader_server_port))
+      # receive confirmation from the server that it was delivered
+      data = self.client.recv(1024).decode()
+
+      # check if the leader server has changed
+      if self.check_server_leader(data):
+        print("Internal error. Please re-enter your message.")
+        self.send_message(client_message, host)
+        return
+      
+    # print output of the server- either that it was successfully sent or that the user was not found.
+    print('Message from server: ' + data)
 
 
   # this is the main client program that we run- it calls on all subfunctions
   def client_program(self):
-      host = set_host
-      port = set_port
+    host = set_host
 
-      self.client.connect((host, port))
-      self.client.sendto("client".encode(), (host, port))
+    for ind, port in enumerate(self.ports):
+      # connect to each of the servers
+      self.client_sockets[ind].connect((host, port))
+      # tell all the servers that we are a client
+      self.client_sockets[ind].sendto("client".encode(), (host, port))
 
+    # handle initial information flow- either will login or create a new account
+    # You need to either log in or create an account first
+
+    while not self.logged_in:
       # handle initial information flow- either will login or create a new account
-      # You need to either log in or create an account first
+      message = input("""
+      Welcome!
+      Type 'login' to log into your account.
+      Type 'create' to create a new account.
+      Type 'exit' to disconnect from server/log out.
+      """)
 
-      while not self.logged_in:
-        # handle initial information flow- either will login or create a new account
-        message = input("""
-        Welcome!
-        Type 'login' to log into your account.
-        Type 'create' to create a new account.
-        Type 'exit' to disconnect from server/log out.
-        """)
+      # login function
+      if message.lower().strip()[:5] == 'login':
+        self.login_client_account(message, host)
+        break
 
-        # login function
-        if message.lower().strip()[:5] == 'login':
-          self.login_client_account(message, host, port)
-          break
+      # create function
+      elif message.lower().strip() == 'create':
+        self.create_client_username(message, host)
+    
+      # exit function- may want to exit early
+      elif message.lower().strip() == 'exit':
+        # send a message to server to indicate this user is logging out
+        self.client.sendto("~\|/~<3exit".encode(), (host, self.leader_server_port))
 
-        # create function
-        elif message.lower().strip() == 'create':
-          self.create_client_username(message, host, port)
+        print(f'Connection closed.')
+        self.client.close()
+        self.logged_in = False
+        break
       
-        # exit function- may want to exit early
-        elif message.lower().strip() == 'exit':
-          # send a message to server to indicate this user is logging out
-          self.client.sendto("~\|/~<3exit".encode(), (host, port))
+      # if it is none of these key words, it will re query until you enter 'login' or 'create' or 'exit'
 
-          print(f'Connection closed.')
-          self.client.close()
-          self.logged_in = False
-          break
+    # can only enter loop if you are logged in
+    if self.logged_in:
+
+      message = input("""
+      To send a message, enter the recipient username, 
+      'listaccts' to list all active usernames, 
+      'exit' to leave program, or 
+      'delete' to delete your account: 
+      """)
+      
+      # continue until client asks to exit
+      while message.strip() != 'exit':
         
-        # if it is none of these key words, it will re query until you enter 'login' or 'create' or 'exit'
+        # delete account function
+        if message.lower().strip() == 'delete':
+          # get the client messages
+          self.get_client_messages(host)
 
-      # can only enter loop if you are logged in
-      if self.logged_in:
+          # delete the client
+          self.delete_client_account(host)
+          break
 
+        # if they ask to create or delete given that you are currently logged in, throw an error
+        elif message.lower().strip() == 'create':
+          print("Error: you must log out before creating a new account. Type 'exit' to log out.")
+
+        # if they ask to create or delete given that you are currently logged in, throw an error
+        elif message.lower().strip() == 'login':
+          print("Error: you are currently logged in to an account. Type 'exit' to log out and then log into another account.")
+
+        # list all account usernames
+        elif message.lower().strip() == 'listaccts':
+          self.list_server_accounts(message.lower().strip(), host)
+
+        # send message otherwise
+        else:
+          self.client.sendto(('sendmsg' + self.getUsername() + "_" + message).encode(), (host, self.leader_server_port))
+          data = self.client.recv(1024).decode()
+
+          # if username is found, server will return 'User found. What is your message: '
+          if data == "User found. Please enter your message: ":
+            message = input(data)
+            while message == "":
+              message = input("Please enter a non-empty message to send: ")
+            self.client.sendto(message.encode(), (host, self.leader_server_port))
+            # receive confirmation from the server that it was delivered
+            data = self.client.recv(1024).decode()
+
+            
+          # print output of the server- either that it was successfully sent or that the user was not found.
+          print('Message from server: ' + data)
+
+        # get all messages that have been delivered to this client
+        self.get_client_messages(host)
+
+        # re query for new client actions
         message = input("""
         To send a message, enter the recipient username, 
         'listaccts' to list all active usernames, 
-        'exit' to leave program, or 
-        'delete' to delete your account: 
+        'exit' to leave program, 
+        'delete' to delete your account,
+        or press enter to continue: 
         """)
-        
-        # continue until client asks to exit
-        while message.strip() != 'exit':
-          
 
-          # delete account function
-          if message.lower().strip() == 'delete':
-            # check remaining msgs
-            message = 'msgspls!'
+      # will only exit while loops on 'exit' or 'delete'
+      # read undelivered messages for exit
+      if message.strip() == 'exit':
+        # retrieve messages before exiting
+        self.get_client_messages(host)
 
-             # inform server that you want to get new messages
-            self.client.sendto(message.encode(), (host, port))
+      # send a message to server to indicate this user is logging out
+      self.client.sendto("~\|/~<3exit".encode(), (host, self.leader_server_port))
 
-            # server will send back the length of messages
-            len_msgs = self.client.recv(1024).decode()
-
-            # send message to control info flow (ensure you are ready to decode msg)
-            message = 'ok'
-            self.client.sendto(message.encode(), (host, port))
-
-            # server will send back messages of proper length
-            data = self.client.recv(int(len_msgs)).decode()
-            
-            if data != 'No messages available':
-              available_msgs = data.split('we_love_cs262')[1:]
-              self.deliver_available_msgs(available_msgs)
-            self.delete_client_account('delete', host, port)
-            break
-
-          # if they ask to create or delete given that you are currently logged in, throw an error
-          elif message.lower().strip() == 'create':
-            print("Error: you must log out before creating a new account. Type 'exit' to log out.")
-
-          # if they ask to create or delete given that you are currently logged in, throw an error
-          elif message.lower().strip() == 'login':
-            print("Error: you are currently logged in to an account. Type 'exit' to log out and then log into another account.")
-
-          # list all account usernames
-          elif message.lower().strip() == 'listaccts':
-            self.client.sendto(message.lower().strip().encode(), (host, port))
-            # will receive from server the length of the account_list
-            len_list = self.client.recv(1024).decode()
-
-            # send confirmation to control input flow
-            message = 'Ok'
-            self.client.sendto(message.encode(), (host, port))
-
-            # Receive the message data- decode the correct length
-            data = self.client.recv(int(len_list)).decode()
-            #feedback = self.client.recv(1024).decode()
-            print('Usernames: ' + data)
-
-          # send message otherwise
-          else:
-            self.client.sendto(('sendmsg' + self.getUsername() + "_" + message).encode(), (host, port))
-            data = self.client.recv(1024).decode()
-
-            # if username is found, server will return 'User found. What is your message: '
-            if data == "User found. Please enter your message: ":
-              message = input(data)
-              while message == "":
-                message = input("Please enter a non-empty message to send: ")
-              self.client.sendto(message.encode(), (host, port))
-              # receive confirmation from the server that it was delivered
-              data = self.client.recv(1024).decode()
-
-              
-            # print output of the server- either that it was successfully sent or that the user was not found.
-            print('Message from server: ' + data)
-
-          # get all messages that have been delivered to this client
-          message = 'msgspls!'
-
-          # inform server that you want to get new messages
-          self.client.sendto(message.encode(), (host, port))
-
-          # server will send back the length of messages
-          len_msgs = self.client.recv(1024).decode()
-
-          # send message to control info flow (ensure you are ready to decode msg)
-          message = 'ok'
-          self.client.sendto(message.encode(), (host, port))
-
-          # server will send back messages of proper length
-          data = self.client.recv(int(len_msgs)).decode()
-          if data != 'No messages available':
-            # deliver available messages if there are any
-            available_msgs = data.split('we_love_cs262')[1:]
-            self.deliver_available_msgs(available_msgs)
-
-          # re query for new client actions
-          message = input("""
-          To send a message, enter the recipient username, 
-          'listaccts' to list all active usernames, 
-          'exit' to leave program, 
-          'delete' to delete your account,
-          or press enter to continue: 
-          """)
-
-        # will only exit while loops on 'exit' or 'delete'
-        # read undelivered messages for exit
-        if message.strip() == 'exit':
-          # retrieve messages before exiting
-          get_remaining_msgs = 'msgspls!'
-
-          # inform server that you want to get new messages
-          self.client.sendto(get_remaining_msgs.encode(), (host, port))
-
-          # server will send back the length of messages
-          len_msgs = self.client.recv(1024).decode()
-
-          # send message to control info flow (ensure you are ready to decode msg)
-          message = 'ok'
-          self.client.sendto(message.encode(), (host, port))
-
-          # server will send back messages of proper length
-          data = self.client.recv(int(len_msgs)).decode()
-          if data != 'No messages available':
-            available_msgs = data.split('we_love_cs262')[1:]
-            self.deliver_available_msgs(available_msgs)
-
-        # send a message to server to indicate this user is logging out
-        self.client.sendto("~\|/~<3exit".encode(), (host, port))
-        
-        print(f'Connection closed.')
-        self.client.close()
+      print(f'Connection closed.')
+      self.client.close()
 
 # program creates a ClientSocket object and runs client_program which
 # handles input and directs it to the appropriate function

@@ -25,11 +25,13 @@ alt_ports = [8887, 8888, 8889]
 servers = []
 all_server_indices = [0, 1, 2, 3, 4]
 
+
 class RepeatingTimer(Timer):
     def run(self):
         while not self.finished.is_set():
             self.function(*self.args, **self.kwargs)
             self.finished.wait(self.interval)
+
 
 class Server:
     # Server object
@@ -41,7 +43,7 @@ class Server:
         self.ports = alt_ports
 
         # set the current leader- when initialized, leader should be the first port
-        self.curr_leader = self.ports[0]      
+        self.curr_leader = self.ports[0]
 
         # set host and port attributes
         if set_host is None:
@@ -54,7 +56,7 @@ class Server:
         self.heartbeat_actions = []
 
         # create a variable to store the conns of the other servers that connect to this server
-        # TODO for other server conns, when a server goes down add the logic of removing hte conn, port
+        # TODO for other server conns, when a server goes down add the logic of removing the conn, port
         # from this list
         self.other_server_conns = []
 
@@ -229,7 +231,7 @@ class Server:
         # create a variable to store the action object that will be used to send this
         # action to the other servers
         client_action = ClientAction(action='sendmsg',
-                                     recipient_username=recipient_username, 
+                                     recipient_username=recipient_username,
                                      current_messages=current_messages_string)
 
         # save the current action object to the list of actions to send out every heart beat
@@ -403,11 +405,10 @@ class Server:
             # update the timestamp value in the global timestamp last saved
             self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
 
-
             # create a variable to store the action object that will be used to send this
             # action to the other servers
             client_action = ClientAction(action='msgspls',
-                                        client_username=client_username)
+                                         client_username=client_username)
 
             # save the current action object to the list of actions to send out every heart beat
             self.save_client_action(client_action)
@@ -432,8 +433,8 @@ class Server:
         # then, send over the final message
         conn.sendto(final_msg.encode(), (host, port))
 
-
     # function to log in to an account
+
     def login_account(self, host, port, conn):
 
         # ask for login and password and then verify if it works
@@ -446,9 +447,6 @@ class Server:
 
         password = conn.recv(1024).decode()
 
-        # TODO login account; add is logged_in support if you log in successfully
-        # if server is shut down, are logged in users still logged in or do they get
-        # logged out
         # lock mutex
         self.account_list_lock.acquire()
 
@@ -478,7 +476,8 @@ class Server:
 
                 # create a variable to store the action object that will be used to send this
                 # action to the other servers
-                client_action = ClientAction(action='login', client_username=username.strip(), logged_in='true')
+                client_action = ClientAction(
+                    action='login', client_username=username.strip(), logged_in='true')
 
                 # save the current action object to the list of actions to send out every heart beat
                 self.save_client_action(client_action)
@@ -527,7 +526,8 @@ class Server:
 
                 # create a variable to store the action object that will be used to send this
                 # action to the other servers
-                client_action = ClientAction(action='login', client_username=username.strip()[5:], logged_in='true')
+                client_action = ClientAction(
+                    action='login', client_username=username.strip()[5:], logged_in='true')
 
                 # save the current action object to the list of actions to send out every heart beat
                 self.save_client_action(client_action)
@@ -580,7 +580,8 @@ class Server:
 
             # create a variable to store the action object that will be used to send this
             # action to the other servers
-            client_action = ClientAction(action='delete', client_username=username)
+            client_action = ClientAction(
+                action='delete', client_username=username)
 
             # save the current action object to the list of actions to send out every heart beat
             self.save_client_action(client_action)
@@ -597,14 +598,14 @@ class Server:
         else:
             # unlock mutex
             self.account_list_lock.release()
-            # want to inform the client that it was unable to delete account
-            message = 'Error deleting account'
+            # want to inform the client that this account doesn't exist so it was already deleted
+            message = 'Account already deleted'
             print(message)
             conn.sendto(message.encode(), (host, port))
 
-
     # function to list all active (non-deleted) accounts
     # add a return statement so it is easier to Unittest
+
     def list_accounts(self):
         # lock mutex
         self.account_list_lock.acquire()
@@ -616,8 +617,8 @@ class Server:
         # as it will be sent over the wire as a string
         return len(listed_accounts), listed_accounts
 
-
     # function to handle when a client logs out
+
     def client_logged_out(self, curr_user):
 
         print("updated client log in status")
@@ -633,14 +634,15 @@ class Server:
 
         # when the user attempts a log in, update the timestamp value in the username's row
         self.df.at[username_index,
-                    "Timestamp_last_updated"] = pd.Timestamp.now()
+                   "Timestamp_last_updated"] = pd.Timestamp.now()
 
         # update the timestamp value in the global timestamp last saved
         self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
 
         # create a variable to store the action object that will be used to send this
         # action to the other servers
-        client_action = ClientAction(action='logout', client_username=curr_user.strip(), logged_in='false')
+        client_action = ClientAction(
+            action='logout', client_username=curr_user.strip(), logged_in='false')
 
         # save the current action object to the list of actions to send out every heart beat
         self.save_client_action(client_action)
@@ -648,14 +650,14 @@ class Server:
         # save updated CSV with the new username
         self.df.to_csv(self.state_path, header=True, index=False)
 
-
-    # function handle different cases when a client connects to the server versus when 
+    # function handle different cases when a client connects to the server versus when
     # another server connects to the server
+
     def server_reroute(self, host, conn, port):
         # receive information from the connection
         data = conn.recv(1024).decode()
 
-        # if the connection is a server, the data will be sent in the format 
+        # if the connection is a server, the data will be sent in the format
         # `{port} + server`
         if data[4:10] == 'server':
             # the data is sent in the form `{port} + server + `
@@ -665,38 +667,38 @@ class Server:
             is_server_leader = bool(data[10:])
 
             # check if the current server connection we have is the leader server
-            if is_server_leader: 
+            if is_server_leader:
                 self.curr_leader = server_port
 
             # run the server to server handling function
-            self.server_to_server(host, conn, server_port)
+            self.server_to_server(conn, server_port)
         else:
             # run the server to client handling function
             self.server_to_client(host, conn, port)
 
-
     # function to save the current state of the client action to a list of actions to
     # send out every heart beat
+
     def save_client_action(self, action):
         if self.is_leader:
             # a hearbeat action will be saved in the format
             self.heartbeat_actions.append(action.exportAction())
 
-
     # function to generate an actions string from the current action list
+
     def generate_server_actions_string(self):
-        # create a string to hold all the actions so we can send it 
+        # create a string to hold all the actions so we can send it
         actions_string = ''
 
         # for each action in the action list
         for action in self.heartbeat_actions:
             actions_string += action + "we_love_cs262"
-        
+
         # return the actions string
         return actions_string
-    
 
     # function to send the heart beat actions to the other connected servers
+
     def send_heartbeat_actions(self):
         # get the list of server heart beat actions
         actions = self.generate_server_actions_string()
@@ -708,37 +710,43 @@ class Server:
         # to the other non leader servers
         if self.is_leader:
             print("I am sending my heart beat actions length HERE", actions_length)
+            print("SECOND CONN", self.other_server_conns)
             # for each of the other non leader servers in the server conns connections
-            for other_server_conn, other_server_port in self.other_server_conns:
-                # first send over the length of the actions string
-                other_server_conn.sendto(
+            if self.other_server_conns:
+                for other_server_conn, other_server_port in self.other_server_conns:
+                    # first send over the length of the actions string
+                    other_server_conn.sendto(
                         actions_length.encode(), (self.host, other_server_port))
-                # receive confirmation that the other server got the length
-                confirmation = other_server_conn.recv(1024).decode()
-                print("this is sent from the other server", confirmation)
-                # send every action that has occured in between heartbeats to each other server
-                other_server_conn.sendto(
+                    print(other_server_port, actions_length)
+                    # receive confirmation that the other server got the length
+                    confirmation = other_server_conn.recv(1024).decode()
+                    print("this is sent from the other server", confirmation)
+                    # send every action that has occured in between heartbeats to each other server
+                    other_server_conn.sendto(
                         actions.encode(), (self.host, other_server_port))
-                print("Sent actions: " + actions + " to " + str(other_server_port))
-                
+                    print("Sent actions: " + actions +
+                        " to " + str(other_server_port))
+
             # for each of the other non leader servers in the server sockets connections
-            for other_server_socket, other_server_port in self.other_server_sockets:
-                # first send over the length of the actions string
-                other_server_socket.sendto(
+            if self.other_server_sockets:
+                for other_server_socket, other_server_port in self.other_server_sockets:
+                    # first send over the length of the actions string
+                    other_server_socket.sendto(
                         actions_length.encode(), (self.host, other_server_port))
-                # receive confirmation that the other server got the length
-                confirmation = other_server_socket.recv(1024).decode()
-                print("this is sent from the other server", confirmation)
-                # send every action that has occured in between heartbeats to each other server
-                other_server_socket.sendto(
+                    # receive confirmation that the other server got the length
+                    confirmation = other_server_socket.recv(1024).decode()
+                    print("this is sent from the other server", confirmation)
+                    # send every action that has occured in between heartbeats to each other server
+                    other_server_socket.sendto(
                         actions.encode(), (self.host, other_server_port))
-                print("Sent actions: " + actions + " to " + str(other_server_port))
+                    print("Sent actions: " + actions +
+                        " to " + str(other_server_port))
 
             # clear the heart beat actions list
             self.heartbeat_actions = []
 
-
     # function for non leader servers to receive actions from leader and process the actions
+
     def receive_heartbeat_action(self):
         while True:
             # if server is not a leader, it recieves actions from the leader
@@ -746,40 +754,48 @@ class Server:
                 # create a variable to hold our actions string
                 actions = ""
                 # check if the leader server exists in the server_conns connection list
-                for leader_server_conn, port in self.other_server_conns:
-                    # if we found the leader server connection, decode from the leader
-                    if port == self.curr_leader:
-                        # get the length of the actions string we are receiving
-                        actions_length = int(leader_server_conn.recv(1024).decode())
-                        print("Received actions length", actions_length)
-                        # send confirmation back to the sendig server
-                        leader_server_conn.sendto(
-                            "ok".encode(), (self.host, port))
-                        # receive the actions string using the length of actions string
-                        actions += leader_server_conn.recv(actions_length).decode()
-                        print("Received actions: " + actions + " from " + str(port))
-                
+                if self.other_server_conns:
+                    for leader_server_conn, port in self.other_server_conns:
+                        # if we found the leader server connection, decode from the leader
+                        if port == self.curr_leader:
+                            # get the length of the actions string we are receiving
+                            actions_length = int(
+                                leader_server_conn.recv(1024).decode())
+                            print("Received actions length", actions_length)
+                            # send confirmation back to the sendig server
+                            leader_server_conn.sendto(
+                                "ok".encode(), (self.host, port))
+                            # receive the actions string using the length of actions string
+                            actions += leader_server_conn.recv(
+                                actions_length).decode()
+                            print("Received actions: " +
+                                actions + " from " + str(port))
+
                 # check if the leader server exists in the server_sockets connection list
-                for leader_server_socket, port in self.other_server_sockets:
-                    # if we found the leader server connection, decode from the leader
-                    if port == self.curr_leader:
-                        # get the length of the actions string we are receiving
-                        actions_length = int(leader_server_socket.recv(1024).decode())
-                        print("Received actions length", actions_length)
-                        # send confirmation back to the sendig server
-                        leader_server_socket.sendto(
-                            "ok".encode(), (self.host, port))
-                        # receive the actions string using the length of actions string
-                        actions += leader_server_socket.recv(actions_length).decode()
-                        print("Received actions: " + actions + " from " + str(port))
-            
-                print("Successfully received action: ", actions)
-                
+                if self.other_server_sockets:
+                    for leader_server_socket, port in self.other_server_sockets:
+                        # if we found the leader server connection, decode from the leader
+                        if port == self.curr_leader:
+                            # get the length of the actions string we are receiving
+                            actions_length = int(
+                                leader_server_socket.recv(1024).decode())
+                            print("Received actions length", actions_length)
+                            # send confirmation back to the sendig server
+                            leader_server_socket.sendto(
+                                "ok".encode(), (self.host, port))
+                            # receive the actions string using the length of actions string
+                            actions += leader_server_socket.recv(
+                                actions_length).decode()
+                            print("Received actions: " +
+                                actions + " from " + str(port))
+
+                # print("Successfully received action: ", actions)
+
                 # once we have recieved the list of action from the leader, parse the actions list
                 self.parse_leader_actions(actions)
 
+    # function to handle parsing and saving the client login action
 
-    # function to handle parsing and saving the client login action 
     def save_login_action(self, server_action):
         # get the username of the client that logged in
         username = server_action[1]
@@ -795,7 +811,7 @@ class Server:
 
         # when the user attempts a log in, update the timestamp value in the username's row
         self.df.at[username_index,
-                    "Timestamp_last_updated"] = pd.Timestamp.now()
+                   "Timestamp_last_updated"] = pd.Timestamp.now()
 
         # update the timestamp value in the global timestamp last saved
         self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
@@ -805,8 +821,8 @@ class Server:
 
         print("succesfully updated login status to logged in")
 
+    # function to handle parsing and saving the create client action
 
-    # function to handle parsing and saving the create client action 
     def save_create_action(self, server_action):
         if server_action[1]:
             # get the username for the new client
@@ -824,10 +840,10 @@ class Server:
                 self.df.at[username_index, "Logged_in"] = logged_in
                 # update the timestamp at that index
                 self.df.at[username_index,
-                        "Timestamp_last_updated"] = pd.Timestamp.now()
+                           "Timestamp_last_updated"] = pd.Timestamp.now()
 
             # if the username has not yet been added to our dataframe
-            else: 
+            else:
                 # make an index for the new username at the end of the dataframe
                 username_index = len(self.df.index)
 
@@ -839,7 +855,7 @@ class Server:
                 self.df.at[username_index, "Messages"] = []
                 # update the timestamp at that index
                 self.df.at[username_index,
-                        "Timestamp_last_updated"] = pd.Timestamp.now()
+                           "Timestamp_last_updated"] = pd.Timestamp.now()
 
         # update the timestamp value in the global timestamp last saved
         self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
@@ -848,7 +864,7 @@ class Server:
         self.df.to_csv(self.state_path, header=True, index=False)
         print("it saved? to the CSV file ??")
 
-    # function to handle parsing and saving the logout client action 
+    # function to handle parsing and saving the logout client action
     def save_logout_action(self, server_action):
         # get the username of the client that logged in
         username = server_action[1]
@@ -864,7 +880,7 @@ class Server:
 
         # when the user attempts a log in, update the timestamp value in the username's row
         self.df.at[username_index,
-                    "Timestamp_last_updated"] = pd.Timestamp.now()
+                   "Timestamp_last_updated"] = pd.Timestamp.now()
 
         # update the timestamp value in the global timestamp last saved
         self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
@@ -874,7 +890,7 @@ class Server:
 
         print("succesfully updated login status to logged out.")
 
-    # function to handle parsing and saving the delete client action 
+    # function to handle parsing and saving the delete client action
     def save_delete_action(self, server_action):
         # get the username of the client that logged in
         username = server_action[1]
@@ -890,9 +906,9 @@ class Server:
         self.df.to_csv(self.state_path, header=True, index=False)
 
         print("successfully deleted client account:", username)
-        
 
-    # function to handle parsing and saving the send message to another user client action 
+    # function to handle parsing and saving the send message to another user client action
+
     def save_sendmsg_action(self, server_action):
         # get the username of the recipient
         recipient_username = server_action[4]
@@ -918,8 +934,8 @@ class Server:
         time.sleep(0.05)
         self.df.to_csv(self.state_path, header=True, index=False)
 
+    # function to handle parsing and saving the get messages client action
 
-    # function to handle parsing and saving the get messages client action 
     def save_msgspls_action(self, server_action):
         # get the username of the client
         client_username = server_action[1]
@@ -933,7 +949,7 @@ class Server:
         self.df.at[username_index, "Messages"] = []
         # update the timestamp value in the username's row
         self.df.at[username_index,
-                    "Timestamp_last_updated"] = pd.Timestamp.now()
+                   "Timestamp_last_updated"] = pd.Timestamp.now()
 
         # update the timestamp value in the global timestamp last saved
         self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
@@ -941,11 +957,9 @@ class Server:
         # have to sleep so it saves correctly.
         time.sleep(0.05)
         self.df.to_csv(self.state_path, header=True, index=False)
-        
-        print("heyoo")
-
 
     # function to parse the list of actions we receive from the leader server
+
     def parse_leader_actions(self, actions):
         action_log = actions.split("we_love_cs262")
         # [[create], [create, username], [create, username, password], [exit]]
@@ -956,7 +970,7 @@ class Server:
 
             if server_action[0] == "login":
                 self.save_login_action(server_action)
-            
+
             elif server_action[0] == "create":
                 self.save_create_action(server_action)
 
@@ -965,22 +979,16 @@ class Server:
 
             elif server_action[0] == "sendmsg":
                 self.save_sendmsg_action(server_action)
-                # TODO add this logic
-                print("not done yet")
 
             elif server_action[0] == "msgspls":
                 self.save_msgspls_action(server_action)
-                # TODO add this logic
-                print("not done yet")
 
             elif server_action[0] == "logout":
                 self.save_logout_action(server_action)
 
-        print("wooo")
+    # function to handle server to server communications and
 
-
-    # function to handle server to server communications and 
-    def server_to_server(self, host, conn, other_server_port):
+    def server_to_server(self, conn, other_server_port):
         self.other_server_conns.append((conn, other_server_port))
         print("a server" + str(other_server_port) + "connected wowwww")
 
@@ -1046,22 +1054,23 @@ class Server:
             elif data == "~\|/~<3exit":
                 self.client_logged_out(curr_user)
 
-
     # function to establish connections between the servers
+
     def connect_to_other_servers(self):
         message = str(self.port) + "server" + str(self.is_leader)
         if self.port == self.ports[1]:
-            self.other_server_sockets[0][0].connect((self.host, self.ports[0]))
-            self.other_server_sockets[0][0].sendto(
-                message.encode(), (self.host, self.ports[0]))
+            # self.other_server_sockets[0][0].connect((self.host, self.ports[0]))
+            # self.other_server_sockets[0][0].sendto(
+            #     message.encode(), (self.host, self.ports[0]))
+            return
 
         elif self.port == self.ports[2]:
-            self.other_server_sockets[0][0].connect((self.host, self.ports[0]))
-            self.other_server_sockets[0][0].sendto(
-                message.encode(), (self.host, self.ports[0]))
+            # self.other_server_sockets[0][0].connect((self.host, self.ports[0]))
+            # self.other_server_sockets[0][0].sendto(
+            #     message.encode(), (self.host, self.ports[0]))
 
-            self.other_server_sockets[1].connect((self.host, self.ports[1]))
-            self.other_server_sockets[1].sendto(
+            self.other_server_sockets[1][0].connect((self.host, self.ports[1]))
+            self.other_server_sockets[1][0].sendto(
                 message.encode(), (self.host, self.ports[1]))
 
     # this program sets up the server + creates new threads for clients
@@ -1077,20 +1086,20 @@ class Server:
         port = self.port
 
         self.connect_to_other_servers()
-        
+
         # set up the send heartbeat function if you are a leader
         heartbeat = RepeatingTimer(10.0, self.send_heartbeat_actions)
-        heartbeat.start() # after 30 seconds, "hello, world" will be printed
+        heartbeat.start()  # after 30 seconds, "hello, world" will be printed
         # if you're no longer leader, want to cancel it
         # t.cancel() # cancels execution, this only works before the 30 seconds is elapsed
-        
+
         # set up the receive heartbeat function if you are a follower
         receive_heartbeat = threading.Thread(
             target=self.receive_heartbeat_action)
 
         # start the thread
         receive_heartbeat.start()
-        
+
         # while True, listen!
         while True:
             conn, addr = self.server.accept()
@@ -1102,7 +1111,7 @@ class Server:
                 target=self.server_reroute, args=(host, conn, port))
 
             # curr_thread = threading.Thread(target=self.server_to_client, args=(host, conn, port,))
-        
+
             curr_thread.start()
 
 
