@@ -403,6 +403,15 @@ class Server:
             # update the timestamp value in the global timestamp last saved
             self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
 
+
+            # create a variable to store the action object that will be used to send this
+            # action to the other servers
+            client_action = ClientAction(action='msgspls',
+                                        client_username=client_username)
+
+            # save the current action object to the list of actions to send out every heart beat
+            self.save_client_action(client_action)
+
             # have to sleep so it saves correctly.
             time.sleep(0.05)
             self.df.to_csv(self.state_path, header=True, index=False)
@@ -913,7 +922,26 @@ class Server:
     # function to handle parsing and saving the get messages client action 
     def save_msgspls_action(self, server_action):
         # get the username of the client
-        username = server_action[1]
+        client_username = server_action[1]
+
+        # empty messages in persistent storage
+        # get the index value of the current client username
+        username_index = self.df.index[self.df["Username"] == client_username].tolist()[
+            0]
+
+        # update the messages value in the username's row
+        self.df.at[username_index, "Messages"] = []
+        # update the timestamp value in the username's row
+        self.df.at[username_index,
+                    "Timestamp_last_updated"] = pd.Timestamp.now()
+
+        # update the timestamp value in the global timestamp last saved
+        self.df.at[0, "Timestamp_last_updated"] = pd.Timestamp.now()
+
+        # have to sleep so it saves correctly.
+        time.sleep(0.05)
+        self.df.to_csv(self.state_path, header=True, index=False)
+        
         print("heyoo")
 
 
