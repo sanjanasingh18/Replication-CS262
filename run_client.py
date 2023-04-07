@@ -4,7 +4,7 @@ import math
 import time
 import uuid
 
-set_port = 8887
+set_port = 8881
 set_host = ''
 # set_host = 'dhcp-10-250-7-238.harvard.edu'
 #[uuid: account info ]
@@ -12,7 +12,7 @@ set_host = ''
 
 class ClientSocket:
 
-  def __init__(self, ports=[8887, 8888, 8888], client=None):
+  def __init__(self, ports=[8881, 8882, 8883], client=None):
     # We store if the client is currently logged in (to see if they have permission to
     # send/receive messages), their username, password, and 
     # queue of messages that they have received.

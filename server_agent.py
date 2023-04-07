@@ -9,6 +9,7 @@ import uuid
 import sys
 import io
 import hashlib
+import datetime
 import hmac
 from _thread import *
 from collections import Counter
@@ -40,7 +41,7 @@ class Server:
         self.is_leader = is_leader.lower() == "true"
 
         # create port list for testing purposes
-        self.ports = alt_ports
+        self.ports = ports
 
         # set the current leader- when initialized, leader should be the first port
         self.curr_leader = self.ports[0]
@@ -67,7 +68,7 @@ class Server:
         self.other_server_sockets = []
 
         # define the other ports that will be used for the other servers
-        other_ports = [x for x in ports if x != self.port]
+        other_ports = [x for x in self.ports if x != self.port]
 
         # add a socket to connect to the leader
         if self.port == self.ports[1]:
@@ -77,6 +78,13 @@ class Server:
             for port in other_ports:
                 self.other_server_sockets.append((socket.socket(
                     socket.AF_INET, socket.SOCK_STREAM), port))
+                
+        # create an array to store communications from the other servers when they send life updates
+        # this array will store communications in the format 
+        # [(port1, timestamp), (port2, timestamp), (port3, timestamp)]
+        self.server_comms = [(self.ports[0], datetime.datetime.now()), 
+                             (self.ports[1], datetime.datetime.now()), 
+                             (self.ports[2], datetime.datetime.now())]
 
         # this commented line was to check that you are able to print account_list usernames
         # of different lengths
@@ -664,7 +672,7 @@ class Server:
             # this information gives us the port address, tells us whether it's a server or a client
             # and tells us if it is a leader or not
             server_port = int(data[:4])
-            is_server_leader = bool(data[10:])
+            is_server_leader = data[10:].lower() == "true"
 
             # check if the current server connection we have is the leader server
             if is_server_leader:
@@ -710,16 +718,15 @@ class Server:
         # to the other non leader servers
         if self.is_leader:
             print("I am sending my heart beat actions length HERE", actions_length)
-            print("SECOND CONN", self.other_server_conns)
+            server_update = str(self.port)
             # for each of the other non leader servers in the server conns connections
             for other_server_conn, other_server_port in self.other_server_conns:
                 # first send over the length of the actions string
-                other_server_conn.sendto(
-                    actions_length.encode(), (self.host, other_server_port))
-                print(other_server_port, actions_length)
-                # receive confirmation that the other server got the length
-                confirmation = other_server_conn.recv(1024).decode()
-                print("this is sent from the other server", confirmation)
+                # other_server_conn.sendto(
+                #     actions_length.encode(), (self.host, other_server_port))
+                # # receive confirmation that the other server got the length
+                # confirmation = other_server_conn.recv(1024).decode()
+                # print("this is sent from the other server", confirmation)
                 # send every action that has occured in between heartbeats to each other server
                 other_server_conn.sendto(
                     actions.encode(), (self.host, other_server_port))
@@ -729,11 +736,11 @@ class Server:
             # for each of the other non leader servers in the server sockets connections
             for other_server_socket, other_server_port in self.other_server_sockets:
                 # first send over the length of the actions string
-                other_server_socket.sendto(
-                    actions_length.encode(), (self.host, other_server_port))
-                # receive confirmation that the other server got the length
-                confirmation = other_server_socket.recv(1024).decode()
-                print("this is sent from the other server", confirmation)
+                # other_server_socket.sendto(
+                #     actions_length.encode(), (self.host, other_server_port))
+                # # receive confirmation that the other server got the length
+                # confirmation = other_server_socket.recv(1024).decode()
+                # print("this is sent from the other server", confirmation)
                 # send every action that has occured in between heartbeats to each other server
                 other_server_socket.sendto(
                     actions.encode(), (self.host, other_server_port))
@@ -742,6 +749,23 @@ class Server:
 
             # clear the heart beat actions list
             self.heartbeat_actions = []
+
+        else: 
+            # send out the port of the curent server so that the other servers know this server is alive
+            server_update = str(self.port)
+            # send life update to each of the other servers in the conn connections
+            for other_server_conn, other_server_port in self.other_server_conns:
+                # send over a life update
+                other_server_conn.sendto(
+                    server_update.encode(), (self.host, other_server_port))
+                print("Sent life update to " + str(other_server_port))
+
+            # send life update to each of the other servers in the server connections
+            for other_server_socket, other_server_port in self.other_server_sockets:
+                # send over a life update
+                other_server_socket.sendto(
+                    server_update.encode(), (self.host, other_server_port))
+                print("Sent life update to " + str(other_server_port))
 
     # function for non leader servers to receive actions from leader and process the actions
 
@@ -752,43 +776,80 @@ class Server:
                 # create a variable to hold our actions string
                 actions = ""
                 # check if the leader server exists in the server_conns connection list
-                for leader_server_conn, port in self.other_server_conns:
+                for server_conn, port in self.other_server_conns:
                     # if we found the leader server connection, decode from the leader
                     if port == self.curr_leader:
+                        print("I think the leader is ", self.curr_leader)
                         # get the length of the actions string we are receiving
-                        actions_length = int(
-                            leader_server_conn.recv(1024).decode())
-                        print("Received actions length", actions_length)
-                        # send confirmation back to the sendig server
-                        leader_server_conn.sendto(
-                            "ok".encode(), (self.host, port))
+                        # actions_length = int(
+                        #     leader_server_conn.recv(1024).decode())
+                        # print("Received actions length", actions_length)
+                        # # send confirmation back to the sendig server
+                        # leader_server_conn.sendto(
+                        #     "ok".encode(), (self.host, port))
                         # receive the actions string using the length of actions string
-                        actions += leader_server_conn.recv(
-                            actions_length).decode()
+                        actions += server_conn.recv(2048).decode()
                         print("Received actions: " +
                               actions + " from " + str(port))
+                        
+                        # automatically update the time stamp for the leader in server_comms when we receive heart beat actions
+                        self.server_comms[self.ports.index(self.curr_leader)] = (self.curr_leader, datetime.datetime.now())
+                    else:
+                        # receive the update from the server
+                        other_server_update = int(server_conn.recv(2048).decode())
+                        # automatically update the time stamp for the tuple at the index for the corresponding port
+                        self.server_comms[self.ports.index(other_server_update)] = (other_server_update, datetime.datetime.now())
+                        print("THIS IS THE CURRENT STATUS", self.server_comms)
 
                 # check if the leader server exists in the server_sockets connection list
-                for leader_server_socket, port in self.other_server_sockets:
+                for server_socket, port in self.other_server_sockets:
                     # if we found the leader server connection, decode from the leader
                     if port == self.curr_leader:
+                        print("I think the leader is ", self.curr_leader)
                         # get the length of the actions string we are receiving
-                        actions_length = int(
-                            leader_server_socket.recv(1024).decode())
-                        print("Received actions length", actions_length)
-                        # send confirmation back to the sendig server
-                        leader_server_socket.sendto(
-                            "ok".encode(), (self.host, port))
+                        # actions_length = int(
+                        #     leader_server_socket.recv(1024).decode())
+                        # print("Received actions length", actions_length)
+                        # # send confirmation back to the sendig server
+                        # leader_server_socket.sendto(
+                        #     "ok".encode(), (self.host, port))
                         # receive the actions string using the length of actions string
-                        actions += leader_server_socket.recv(
-                            actions_length).decode()
+                        actions += server_socket.recv(2048).decode()
                         print("Received actions: " +
                               actions + " from " + str(port))
+                        
+                        # automatically update the time stamp for the leader in server_comms when we receive heart beat actions
+                        self.server_comms[self.ports.index(self.curr_leader)] = (self.curr_leader, datetime.datetime.now())
+                    else:
+                        # receive the update from the server
+                        other_server_update = int(server_socket.recv(2048).decode())
+                        # update the time stamp for the tuple at the index for the corresponding port
+                        self.server_comms[self.ports.index(other_server_update)] = (other_server_update, datetime.datetime.now())
+                        print("THIS IS THE CURRENT STATUS", self.server_comms)
 
-                # print("Successfully received action: ", actions)
+                print("Successfully received action: ", actions)
 
                 # once we have recieved the list of action from the leader, parse the actions list
                 self.parse_leader_actions(actions)
+                
+            # receive life updates from other servers if you are the leader
+            else:
+                # check if the leader server exists in the server_conns connection list
+                for server_conn, port in self.other_server_conns:
+                    # receive the update from the server
+                    other_server_update = int(server_conn.recv(2048).decode())
+                    # update the time stamp for the tuple at the index for the corresponding port
+                    self.server_comms[self.ports.index(other_server_update)] = (other_server_update, datetime.datetime.now())
+                    print("THIS IS THE CURRENT STATUS", self.server_comms)
+
+                # check if the leader server exists in the server_sockets connection list
+                for server_socket, port in self.other_server_sockets:
+                    # receive the update from the server
+                    other_server_update = int(server_socket.recv(2048).decode())
+                    # update the time stamp for the tuple at the index for the corresponding port
+                    self.server_comms[self.ports.index(other_server_update)] = (other_server_update, datetime.datetime.now())
+                    print("THIS IS THE CURRENT STATUS", self.server_comms)
+
 
     # function to handle parsing and saving the client login action
 
@@ -1083,7 +1144,7 @@ class Server:
         self.connect_to_other_servers()
 
         # set up the send heartbeat function if you are a leader
-        heartbeat = RepeatingTimer(10.0, self.send_heartbeat_actions)
+        heartbeat = RepeatingTimer(1.0, self.send_heartbeat_actions)
         heartbeat.start()  # after 30 seconds, "hello, world" will be printed
         # if you're no longer leader, want to cancel it
         # t.cancel() # cancels execution, this only works before the 30 seconds is elapsed
