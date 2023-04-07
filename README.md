@@ -28,8 +28,6 @@ Line 8 on run_client.py: set_host = hostName
 
 Line 11 on run_server.py: set_host = hostName
 
-Setting up the GRPC server-client chat application:
-
 Common issues:
 
 'Address already in use' issue when you run the files run_server.py or grpc_server.py. Change the set_port variable (line 10, run_server.py OR line 12, grpc_server.py) to be a different value (e.g. 8888) . Then, update the set_port variable ( OR line 12, grpc_client.py) to be that SAME value (e.g. also 8888).
