@@ -712,35 +712,33 @@ class Server:
             print("I am sending my heart beat actions length HERE", actions_length)
             print("SECOND CONN", self.other_server_conns)
             # for each of the other non leader servers in the server conns connections
-            if self.other_server_conns:
-                for other_server_conn, other_server_port in self.other_server_conns:
-                    # first send over the length of the actions string
-                    other_server_conn.sendto(
-                        actions_length.encode(), (self.host, other_server_port))
-                    print(other_server_port, actions_length)
-                    # receive confirmation that the other server got the length
-                    confirmation = other_server_conn.recv(1024).decode()
-                    print("this is sent from the other server", confirmation)
-                    # send every action that has occured in between heartbeats to each other server
-                    other_server_conn.sendto(
-                        actions.encode(), (self.host, other_server_port))
-                    print("Sent actions: " + actions +
-                        " to " + str(other_server_port))
+            for other_server_conn, other_server_port in self.other_server_conns:
+                # first send over the length of the actions string
+                other_server_conn.sendto(
+                    actions_length.encode(), (self.host, other_server_port))
+                print(other_server_port, actions_length)
+                # receive confirmation that the other server got the length
+                confirmation = other_server_conn.recv(1024).decode()
+                print("this is sent from the other server", confirmation)
+                # send every action that has occured in between heartbeats to each other server
+                other_server_conn.sendto(
+                    actions.encode(), (self.host, other_server_port))
+                print("Sent actions: " + actions +
+                      " to " + str(other_server_port))
 
             # for each of the other non leader servers in the server sockets connections
-            if self.other_server_sockets:
-                for other_server_socket, other_server_port in self.other_server_sockets:
-                    # first send over the length of the actions string
-                    other_server_socket.sendto(
-                        actions_length.encode(), (self.host, other_server_port))
-                    # receive confirmation that the other server got the length
-                    confirmation = other_server_socket.recv(1024).decode()
-                    print("this is sent from the other server", confirmation)
-                    # send every action that has occured in between heartbeats to each other server
-                    other_server_socket.sendto(
-                        actions.encode(), (self.host, other_server_port))
-                    print("Sent actions: " + actions +
-                        " to " + str(other_server_port))
+            for other_server_socket, other_server_port in self.other_server_sockets:
+                # first send over the length of the actions string
+                other_server_socket.sendto(
+                    actions_length.encode(), (self.host, other_server_port))
+                # receive confirmation that the other server got the length
+                confirmation = other_server_socket.recv(1024).decode()
+                print("this is sent from the other server", confirmation)
+                # send every action that has occured in between heartbeats to each other server
+                other_server_socket.sendto(
+                    actions.encode(), (self.host, other_server_port))
+                print("Sent actions: " + actions +
+                      " to " + str(other_server_port))
 
             # clear the heart beat actions list
             self.heartbeat_actions = []
@@ -754,40 +752,38 @@ class Server:
                 # create a variable to hold our actions string
                 actions = ""
                 # check if the leader server exists in the server_conns connection list
-                if self.other_server_conns:
-                    for leader_server_conn, port in self.other_server_conns:
-                        # if we found the leader server connection, decode from the leader
-                        if port == self.curr_leader:
-                            # get the length of the actions string we are receiving
-                            actions_length = int(
-                                leader_server_conn.recv(1024).decode())
-                            print("Received actions length", actions_length)
-                            # send confirmation back to the sendig server
-                            leader_server_conn.sendto(
-                                "ok".encode(), (self.host, port))
-                            # receive the actions string using the length of actions string
-                            actions += leader_server_conn.recv(
-                                actions_length).decode()
-                            print("Received actions: " +
-                                actions + " from " + str(port))
+                for leader_server_conn, port in self.other_server_conns:
+                    # if we found the leader server connection, decode from the leader
+                    if port == self.curr_leader:
+                        # get the length of the actions string we are receiving
+                        actions_length = int(
+                            leader_server_conn.recv(1024).decode())
+                        print("Received actions length", actions_length)
+                        # send confirmation back to the sendig server
+                        leader_server_conn.sendto(
+                            "ok".encode(), (self.host, port))
+                        # receive the actions string using the length of actions string
+                        actions += leader_server_conn.recv(
+                            actions_length).decode()
+                        print("Received actions: " +
+                              actions + " from " + str(port))
 
                 # check if the leader server exists in the server_sockets connection list
-                if self.other_server_sockets:
-                    for leader_server_socket, port in self.other_server_sockets:
-                        # if we found the leader server connection, decode from the leader
-                        if port == self.curr_leader:
-                            # get the length of the actions string we are receiving
-                            actions_length = int(
-                                leader_server_socket.recv(1024).decode())
-                            print("Received actions length", actions_length)
-                            # send confirmation back to the sendig server
-                            leader_server_socket.sendto(
-                                "ok".encode(), (self.host, port))
-                            # receive the actions string using the length of actions string
-                            actions += leader_server_socket.recv(
-                                actions_length).decode()
-                            print("Received actions: " +
-                                actions + " from " + str(port))
+                for leader_server_socket, port in self.other_server_sockets:
+                    # if we found the leader server connection, decode from the leader
+                    if port == self.curr_leader:
+                        # get the length of the actions string we are receiving
+                        actions_length = int(
+                            leader_server_socket.recv(1024).decode())
+                        print("Received actions length", actions_length)
+                        # send confirmation back to the sendig server
+                        leader_server_socket.sendto(
+                            "ok".encode(), (self.host, port))
+                        # receive the actions string using the length of actions string
+                        actions += leader_server_socket.recv(
+                            actions_length).decode()
+                        print("Received actions: " +
+                              actions + " from " + str(port))
 
                 # print("Successfully received action: ", actions)
 
@@ -1059,15 +1055,14 @@ class Server:
     def connect_to_other_servers(self):
         message = str(self.port) + "server" + str(self.is_leader)
         if self.port == self.ports[1]:
-            # self.other_server_sockets[0][0].connect((self.host, self.ports[0]))
-            # self.other_server_sockets[0][0].sendto(
-            #     message.encode(), (self.host, self.ports[0]))
-            return
+            self.other_server_sockets[0][0].connect((self.host, self.ports[0]))
+            self.other_server_sockets[0][0].sendto(
+                message.encode(), (self.host, self.ports[0]))
 
         elif self.port == self.ports[2]:
-            # self.other_server_sockets[0][0].connect((self.host, self.ports[0]))
-            # self.other_server_sockets[0][0].sendto(
-            #     message.encode(), (self.host, self.ports[0]))
+            self.other_server_sockets[0][0].connect((self.host, self.ports[0]))
+            self.other_server_sockets[0][0].sendto(
+                message.encode(), (self.host, self.ports[0]))
 
             self.other_server_sockets[1][0].connect((self.host, self.ports[1]))
             self.other_server_sockets[1][0].sendto(
