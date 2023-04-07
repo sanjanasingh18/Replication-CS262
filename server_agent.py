@@ -25,6 +25,8 @@ ports = [8881, 8882, 8883]
 alt_ports = [8887, 8888, 8889]
 servers = []
 all_server_indices = [0, 1, 2, 3, 4]
+heartbeat_interval = 1.0
+failure_time = heartbeat_interval * 2
 
 
 class RepeatingTimer(Timer):
@@ -1129,6 +1131,20 @@ class Server:
             self.other_server_sockets[1][0].sendto(
                 message.encode(), (self.host, self.ports[1]))
 
+
+    # function to detect server failure 
+    def detect_server_failure(self):
+        # TODO do this
+        print("this is the failure time", failure_time)
+
+
+    # function to elect a new server leader
+    def elect_server_leader(self):
+        # TODO do this 
+        new_server = "hi?"
+        print("new server is ", new_server)
+
+
     # this program sets up the server + creates new threads for clients
     def initialize_server(self):
         host = self.host
@@ -1144,7 +1160,7 @@ class Server:
         self.connect_to_other_servers()
 
         # set up the send heartbeat function if you are a leader
-        heartbeat = RepeatingTimer(1.0, self.send_heartbeat_actions)
+        heartbeat = RepeatingTimer(heartbeat_interval, self.send_heartbeat_actions)
         heartbeat.start()  # after 30 seconds, "hello, world" will be printed
         # if you're no longer leader, want to cancel it
         # t.cancel() # cancels execution, this only works before the 30 seconds is elapsed
