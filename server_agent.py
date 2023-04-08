@@ -1249,8 +1249,7 @@ class Server:
                     # use that timestamp to detect server failure
                     failure_bound = most_recent_heartbeat_time + datetime.timedelta(seconds=1.5)
                     print('failure time, cur time', failure_bound, cur_time)
-                    # if cur_time > failure_bound:
-                    if not self.is_leader:
+                    if cur_time > failure_bound:
                         # then server has failed:
                         self.failed_server_ports.add(port)
                         print("Server with port #", port, "has failed")
