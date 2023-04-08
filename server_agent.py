@@ -74,6 +74,9 @@ class Server:
         # create a variable to store the time interval for the heartbeat actions
         self.heartbeat_interval = 1.0
 
+        # have a list of failed server ports so the other servers know not to send things to them
+        self.failed_server_ports = []
+
         # define the other ports that will be used for the other servers
         other_ports = [x for x in self.ports if x != self.port]
 
@@ -733,11 +736,13 @@ class Server:
                 # # receive confirmation that the other server got the length
                 # confirmation = other_server_conn.recv(1024).decode()
                 # print("this is sent from the other server", confirmation)
-                # send every action that has occured in between heartbeats to each other server
-                other_server_conn.sendto(
-                    actions.encode(), (self.host, other_server_port))
-                print("Sent actions: " + actions +
-                      " to " + str(other_server_port))
+                # check that each server is not in the list of failed servers
+                if other_server_port not in self.failed_server_ports:
+                    # send every action that has occured in between heartbeats to each other server
+                    other_server_conn.sendto(
+                        actions.encode(), (self.host, other_server_port))
+                    print("Sent actions: " + actions +
+                        " to " + str(other_server_port))
 
             # for each of the other non leader servers in the server sockets connections
             for other_server_socket, other_server_port in self.other_server_sockets:
@@ -747,11 +752,13 @@ class Server:
                 # # receive confirmation that the other server got the length
                 # confirmation = other_server_socket.recv(1024).decode()
                 # print("this is sent from the other server", confirmation)
-                # send every action that has occured in between heartbeats to each other server
-                other_server_socket.sendto(
-                    actions.encode(), (self.host, other_server_port))
-                print("Sent actions: " + actions +
-                      " to " + str(other_server_port))
+                # check that each server is not in the list of failed servers
+                if other_server_port not in self.failed_server_ports:
+                    # send every action that has occured in between heartbeats to each other server
+                    other_server_socket.sendto(
+                        actions.encode(), (self.host, other_server_port))
+                    print("Sent actions: " + actions +
+                        " to " + str(other_server_port))
 
             # clear the heart beat actions list
             self.heartbeat_actions = []
@@ -762,17 +769,21 @@ class Server:
             print("THIS IS MY PORT", self.port)
             # send life update to each of the other servers in the conn connections
             for other_server_conn, other_server_port in self.other_server_conns:
-                # send over a life update
-                other_server_conn.sendto(
-                    server_update.encode(), (self.host, other_server_port))
-                print("Sent life update to " + str(other_server_port))
+                # check that each server is not in the list of failed servers
+                if other_server_port not in self.failed_server_ports:
+                    # send over a life update
+                    other_server_conn.sendto(
+                        server_update.encode(), (self.host, other_server_port))
+                    print("Sent life update to " + str(other_server_port))
 
             # send life update to each of the other servers in the server connections
             for other_server_socket, other_server_port in self.other_server_sockets:
-                # send over a life update
-                other_server_socket.sendto(
-                    server_update.encode(), (self.host, other_server_port))
-                print("Sent life update to " + str(other_server_port))
+                # check that each server is not in the list of failed servers
+                if other_server_port not in self.failed_server_ports:
+                    # send over a life update
+                    other_server_socket.sendto(
+                        server_update.encode(), (self.host, other_server_port))
+                    print("Sent life update to " + str(other_server_port))
 
     # function for non leader servers to receive actions from leader and process the actions
 
@@ -1147,8 +1158,19 @@ class Server:
 
     # function to detect server failure 
     def detect_server_failure(self):
-        # TODO do this
-        print("this server has failed: ", self.port)
+        # TODO do this, add the logic for checking if some of the other servers have failed
+        # this is pseudocode but this is the main idea
+
+        # for conn, port in self.other_server_conns:
+        #     # fix the logic for this if statement
+        #     if server has failed:
+        #         self.failed_server_ports.append(port)
+        #         print("this server has failed: ", port)
+        
+        # for server_socket, port in self.other_server_sockets:
+        #     if server has failed:
+        #         self.failed_server_ports.append(port)
+        #         print("this server has failed: ", port)
 
 
     # function to elect a new server leader
@@ -1173,8 +1195,15 @@ class Server:
     # function to reboot the server
     def reboot_server(self):
         # reboot the server to start sending heartbeat actions again
+        self.send_server_reboot_message()
         self.run_server_program()
         print("Rebooted the server.")
+
+
+    # function to tell the other servers that this server has been rebooted
+    def send_server_reboot_message(self):
+        # TODO add/fix logic here so that once this server is rebooted, we can tell the other servers so they know 
+        # to remove this server from the list of failed servers. 
 
 
     # this program sets up the server + creates new threads for clients
