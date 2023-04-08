@@ -25,7 +25,10 @@ headers = ["Username", "Logged_in", "Password",
 ports = [8881, 8882, 8883]
 alt_ports = [8887, 8888, 8889]
 servers = []
-all_server_indices = [0, 1, 2, 3, 4]
+all_server_indices = [0, 1, 2]
+# set the indices of the servers that can fail (to demo 2-fault tolerant system)
+# can alter these to be any 2 values between 0 and 2
+failure_indices = [1, 2]
 
 
 class RepeatingTimer(Timer):
@@ -1167,8 +1170,6 @@ class Server:
             self.other_server_sockets[1][0].sendto(
                 message.encode(), (self.host, self.ports[1]))
 
-    # TODO- pick 2 servers to fail based on port index
-    # make it a global variable so you can pick any 2 indices to fail
 
     # function to detect server failure 
     def detect_server_failure(self):
@@ -1213,13 +1214,18 @@ class Server:
     # function to mimic server failure
     # makes the server sleep for a certain amount of time
     def start_server_failure(self):
-        # if the server fails, you want to stop the heartbeat action
-        self.heartbeat.cancel()
-        print("This server has failed")
-        # make the server sleep for five seconds to simulate server failure
-        time.sleep(5.0)
-        # once the sleep time has stopped, we can reboot the server
-        self.reboot_server()
+        # if this server has an index which is 'allowed to fail' (system is 2 fault-tolerant
+        # so we have at most 2 servers failing), then have it fail.
+        index_of_self = self.ports.index(self.port)
+        if index_of_self in failure_indices:
+            # if the server fails, you want to stop the heartbeat action
+            self.heartbeat.cancel()
+            print("This server has failed")
+            # make the server sleep for five seconds to simulate server failure
+            time.sleep(5.0)
+            # once the sleep time has stopped, we can reboot the server
+            self.reboot_server()
+        # otherwise, continue
 
     
     # function to reboot the server
