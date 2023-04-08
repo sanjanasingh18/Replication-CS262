@@ -1161,13 +1161,13 @@ class Server:
         # TODO do this, add the logic for checking if some of the other servers have failed
         # this is pseudocode but this is the main idea
 
-        # for conn, port in self.other_server_conns:
+        for conn, port in self.other_server_conns:
         #     # fix the logic for this if statement
         #     if server has failed:
         #         self.failed_server_ports.append(port)
         #         print("this server has failed: ", port)
         
-        # for server_socket, port in self.other_server_sockets:
+        for server_socket, port in self.other_server_sockets:
         #     if server has failed:
         #         self.failed_server_ports.append(port)
         #         print("this server has failed: ", port)
@@ -1197,7 +1197,7 @@ class Server:
         # reboot the server to start sending heartbeat actions again
         self.send_server_reboot_message()
         self.run_server_program()
-        print("Rebooted the server.")
+        print("Rebooting the server...")
 
 
     # function to tell the other servers that this server has been rebooted
@@ -1223,7 +1223,7 @@ class Server:
         port = self.port
 
 
-        failure_interval = self.heartbeat_interval * random.uniform(1.0, 5.0)
+        failure_interval = self.heartbeat_interval * random.uniform(1.0, 15.0)
 
         print("This Server will fail in " + str(failure_interval) + " seconds.")
 
@@ -1232,6 +1232,7 @@ class Server:
         self.heartbeat.start()
 
         # set up the failure function to make the server stop responding to mimic failure
+        # one time timer (not repeated) as you will run 'run_server_program' to reboot server.
         server_failure = Timer(failure_interval, self.start_server_failure)
         server_failure.start()
 
