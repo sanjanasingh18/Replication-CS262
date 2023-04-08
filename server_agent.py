@@ -10,6 +10,7 @@ import sys
 import io
 import hashlib
 import datetime
+import random
 import hmac
 from _thread import *
 from collections import Counter
@@ -25,8 +26,6 @@ ports = [8881, 8882, 8883]
 alt_ports = [8887, 8888, 8889]
 servers = []
 all_server_indices = [0, 1, 2, 3, 4]
-heartbeat_interval = 1.0
-failure_time = heartbeat_interval * 2
 
 
 class RepeatingTimer(Timer):
@@ -69,6 +68,12 @@ class Server:
         # but then that server stops so we need to remove the socket from self.other_server_socket
         self.other_server_sockets = []
 
+        # create a variable to hold the heart beat actions
+        self.heartbeat = None
+
+        # create a variable to store the time interval for the heartbeat actions
+        self.heartbeat_interval = 1.0
+
         # define the other ports that will be used for the other servers
         other_ports = [x for x in self.ports if x != self.port]
 
@@ -90,7 +95,6 @@ class Server:
 
         # this commented line was to check that you are able to print account_list usernames
         # of different lengths
-        # self.account_list['veryveryverylongwordgjralkdsfjnajfhgnlasdgnmlejahsgndmjighfjndkgshdnfkmeaijrdghfnkmesjdghnkmjgkmdsijgrndfkmdedsoijgdnkmijsgdnbckmdoseijdkoghjndksoeighufdkoseijfgnxdkoseijgncdkoseijrsgfkmdoewrijfgnckmxdoseijrgfnkdleoijrfgnckmdosfeijrdfkeirjhtungkmfidjenkmrtofgijdnzerawkmlortgifuhjndekwirghufjcnkmdseijrfgndkmseijrgfnckmdxosejirtfgknmdoewaijrtcfgkdxoewajirgfncaghfkdjnahfbdjnsmjfndmsjehrdksehbrsdkmjherbcmvkxdsjhebfcnvkxdioshuerjtkngfdhiuswjbeqnrkfglhdbsanwkeriofghubcjvnxkzsalijwehurbjcnvkxaisdhuwrgjdksaioehurwgdfjknsioehuwcjknvihuxdgsbejrnktfghiodabwjenkrveryveryverylongwordgjralkdsfjnajfhgnlasdgnmlejahsgndmjighfjndkgshdnfkmeaijrdghfnkmesjdghnkmjgkmdsijgrndfkmdedsoijgdnkmijsgdnbckmdoseijdkoghjndksoeighufdkoseijfgnxdkoseijgncdkoseijrsgfkmdoewrijfgnckmxdoseijrgfnkdleoijrfgnckmdosfeijrdfkeirjhtungkmfidjenkmrtofgijdnzerawkmlortgifuhjndekwirghufjcnkmdseijrfgndkmseijrgfnckmdxosejirtfgknmdoewaijrtcfgkdxoewajirgfncaghfkdjnahfbdjnsmjfndmsjehrdksehbrsdkmjherbcmvkxdsjhebfcnvkxdioshuerjtkngfdhiuswjbeqnrkfglhdbsanwkeriofghubcjvnxkzsalijwehurbjcnvkxaisdhuwrgjdksaioehurwgdfjknsioehuwcjknvihuxdgsbejrnktfghiodabwjenkrveryveryverylongwordgjralkdsfjnajfhgnlasdgnmlejahsgndmjighfjndkgshdnfkmeaijrdghfnkmesjdghnkmjgkmdsijgrndfkmdedsoijgdnkmijsgdnbckmdoseijdkoghjndksoeighufdkoseijfgnxdkoseijgncdkoseijrsgfkmdoewrijfgnckmxdoseijrgfnkdleoijrfgnckmdosfeijrdfkeirjhtungkmfidjenkmrtofgijdnzerawkmlortgifuhjndekwirghufjcnkmdseijrfgndkmseijrgfnckmdxosejirtfgknmdoewaijrtcfgkdxoewajirgfncaghfkdjnahfbdjnsmjfndmsjehrdksehbrsdkmjherbcmvkxdsjhebfcnvkxdioshuerjtkngfdhiuswjbeqnrkfglhdbsanwkeriofghubcjvnxkzsalijwehurbjcnvkxaisdhuwrgjdksaioehurwgdfjknsioehuwcjknvihuxdgsbejrnktfghiodabwjenkrveryveryverylongwordgjralkdsfjnajfhgnlasdgnmlejahsgndmjighfjndkgshdnfkmeaijrdghfnkmesjdghnkmjgkmdsijgrndfkmdedsoijgdnkmijsgdnbckmdoseijdkoghjndksoeighufdkoseijfgnxdkoseijgncdkoseijrsgfkmdoewrijfgnckmxdoseijrgfnkdleoijrfgnckmdosfeijrdfkeirjhtungkmfidjenkmrtofgijdnzerawkmlortgifuhjndekwirghufjcnkmdseijrfgndkmseijrgfnckmdxosejirtfgknmdoewaijrtcfgkdxoewajirgfncaghfkdjnahfbdjnsmjfndmsjehrdksehbrsdkmjherbcmvkxdsjhebfcnvkxdioshuerjtkngfdhiuswjbeqnrkfglhdbsanwkeriofghubcjvnxkzsalijwehurbjcnvkxaisdhuwrgjdksaioehurwgdfjknsioehuwcjknvihuxdgsbejrnktfghiodabwjenkrveryveryverylongwordgjralkdsfjnajfhgnlasdgnmlejahsgndmjighfjndkgshdnfkmeaijrdghfnkmesjdghnkmjgkmdsijgrndfkmdedsoijgdnkmijsgdnbckmdoseijdkoghjndksoeighufdkoseijfgnxdkoseijgncdkoseijrsgfkmdoewrijfgnckmxdoseijrgfnkdleoijrfgnckmdosfeijrdfkeirjhtungkmfidjenkmrtofgijdnzerawkmlortgifuhjndekwirghufjcnkmdseijrfgndkmseijrgfnckmdxosejirtfgknmdoewaijrtcfgkdxoewajirgfncaghfkdjnahfbdjnsmjfndmsjehrdksehbrsdkmjherbcmvkxdsjhebfcnvkxdioshuerjtkngfdhiuswjbeqnrkfglhdbsanwkeriofghubcjvnxkzsalijwehurbjcnvkxaisdhuwrgjdksaioehurwgdfjknsioehuwcjknvihuxdgsbejrnktfghiodabwjenkrveryveryverylongwordgjralkdsfjnajfhgnlasdgnmlejahsgndmjighfjndkgshdnfkmeaijrdghfnkmesjdghnkmjgkmdsijgrndfkmdedsoijgdnkmijsgdnbckmdoseijdkoghjndksoeighufdkoseijfgnxdkoseijgncdkoseijrsgfkmdoewrijfgnckmxdoseijrgfnkdleoijrfgnckmdosfeijrdfkeirjhtungkmfidjenkmrtofgijdnzerawkmlortgifuhjndekwirghufjcnkmdseijrfgndkmseijrgfnckmdxosejirtfgknmdoewaijrtcfgkdxoewajirgfncaghfkdjnahfbdjnsmjfndmsjehrdksehbrsdkmjherbcmvkxdsjhebfcnvkxdioshuerjtkngfdhiuswjbeqnrkfglhdbsanwkeriofghubcjvnxkzsalijwehurbjcnvkxaisdhuwrgjdksaioehurwgdfjknsioehuwcjknvihuxdgsbejrnktfghiodabwjenkrveryveryverylongwordgjralkdsfjnajfhgnlasdgnmlejahsgndmjighfjndkgshdnfkmeaijrdghfnkmesjdghnkmjgkmdsijgrndfkmdedsoijgdnkmijsgdnbckmdoseijdkoghjndksoeighufdkoseijfgnxdkoseijgncdkoseijrsgfkmdoewrijfgnckmxdoseijrgfnkdleoijrfgnckmdosfeijrdfkeirjhtungkmfidjenkmrtofgijdnzerawkmlortgifuhjndekwirghufjcnkmdseijrfgndkmseijrgfnckmdxosejirtfgknmdoewaijrtcfgkdxoewajirgfncaghfkdjnahfbdjnsmjfndmsjehrdksehbrsdkmjherbcmvkxdsjhebfcnvkxdioshuerjtkngfdhiuswjbeqnrkfglhdbsanwkeriofghubcjvnxkzsalijwehurbjcnvkxaisdhuwrgjdksaioehurwgdfjknsioehuwcjknvihuxdgsbejrnktfghiodabwjenkrveryveryverylongwordgjralkdsfjnajfhgnlasdgnmlejahsgndmjighfjndkgshdnfkmeaijrdghfnkmesjdghnkmjgkmdsijgrndfkmdedsoijgdnkmijsgdnbckmdoseijdkoghjndksoeighufdkoseijfgnxdkoseijgncdkoseijrsgfkmdoewrijfgnckmxdoseijrgfnkdleoijrfgnckmdosfeijrdfkeirjhtungkmfidjenkmrtofgijdnzerawkmlortgifuhjndekwirghufjcnkmdseijrfgndkmseijrgfnckmdxosejirtfgknmdoewaijrtcfgkdxoewajirgfncaghfkdjnahfbdjnsmjfndmsjehrdksehbrsdkmjherbcmvkxdsjhebfcnvkxdioshuerjtkngfdhiuswjbeqnrkfglhdbsanwkeriofghubcjvnxkzsalijwehurbjcnvkxaisdhuwrgjdksaioehurwgdfjknsioehuwcjknvihuxdgsbejrnktfghiodabwjenkrveryveryverylongwordgjralkdsfjnajfhgnlasdgnmlejahsgndmjighfjndkgshdnfkmeaijrdghfnkmesjdghnkmjgkmdsijgrndfkmdedsoijgdnkmijsgdnbckmdoseijdkoghjndksoeighufdkoseijfgnxdkoseijgncdkoseijrsgfkmdoewrijfgnckmxdoseijrgfnkdleoijrfgnckmdosfeijrdfkeirjhtungkmfidjenkmrtofgijdnzerawkmlortgifuhjndekwirghufjcnkmdseijrfgndkmseijrgfnckmdxosejirtfgknmdoewaijrtcfgkdxoewajirgfncaghfkdjnahfbdjnsmjfndmsjehrdksehbrsdkmjherbcmvkxdsjhebfcnvkxdioshuerjtkngfdhiuswjbeqnrkfglhdbsanwkeriofghubcjvnxkzsalijwehurbjcnvkxaisdhuwrgjdksaioehurwgdfjknsioehuwcjknvihuxdgsbejrnktfghiodabwjenkrveryveryverylongwordgjralkdsfjnajfhgnlasdgnmlejahsgndmjighfjndkgshdnfkmeaijrdghfnkmesjdghnkmjgkmdsijgrndfkmdedsoijgdnkmijsgdnbckmdoseijdkoghjndksoeighufdkoseijfgnxdkoseijgncdkoseijrsgfkmdoewrijfgnckmxdoseijrgfnkdleoijrfgnckmdosfeijrdfkeirjhtungkmfidjenkmrtofgijdnzerawkmlortgifuhjndekwirghufjcnkmdseijrfgndkmseijrgfnckmdxosejirtfgknmdoewaijrtcfgkdxoewajirgfncaghfkdjnahfbdjnsmjfndmsjehrdksehbrsdkmjherbcmvkxdsjhebfcnvkxdioshuerjtkngfdhiuswjbeqnrkfglhdbsanwkeriofghubcjvnxkzsalijwehurbjcnvkxaisdhuwrgjdksaioehurwgdfjknsioehuwcjknvihuxdgsbejrnktfghiodabwjenkrvvvvvvveryveryverylongwordgjralkdsfjnajfhgnlasdgnmlejahsgndmjighfjndkgshdnfkmeaijrdghfnkmesjdghnkmjgkmdsijgrndfkmdedsoijgdnkmijsgdnbckmdoseijdkoghjndksoeighufdkoseijfgnxdkoseijgncdkoseijrsgfkmdoewrijfgnckmxdoseijrgfnkdleoijrfgnckmdosfeijrdfkeirjhtungkmfidjenkmrtofgijdnzerawkmlortgifuhjndekwirghufjcnkmdseijrfgndkmseijrgfnckmdxosejirtfgknmdoewaijrtcfgkdxoewajirgfncaghfkdjnahfbdjnsmjfndmsjehrdksehbrsdkmjherbcmvkxdsjhebfcnvkxdioshuerjtkngfdhiuswjbeqnrkfglhdbsanwkeriofghubcjvnxkzsalijwehurbjcnvkxaisdhuwrgjdksaioehurwgdfjknsioehuwcjknvihuxdgsbejrnktfghiodabwjenkrveryveryverylongwordgjralkdsfjnajfhgnlasdgnmlejahsgndmjighfjndkgshdnfkmeaijrdghfnkmesjdghnkmjgkmdsijgrndfkmdedsoijgdnkmijsgdnbckmdoseijdkoghjndksoeighufdkoseijfgnxdkoseijgncdkoseijrsgfkmdoewrijfgnckmxdoseijrgfnkdleoijrfgnckmdosfeijrdfkeirjhtungkmfidjenkmrtofgijdnzerawkmlortgifuhjndekwirghufjcnkmdseijrfgndkmseijrgfnckmdxosejirtfgknmdoewaijrtcfgkdxoewajirgfncaghfkdjnahfbdjnsmjfndmsjehrdksehbrsdkmjherbcmvkxdsjhebfcnvkxdioshuerjtkngfdhiuswjbeqnrkfglhdbsanwkeriofghubcjvnxkzsalijwehurbjcnvkxaisdhuwrgjdksaioehurwgdfjknsioehuwcjknvihuxdgsbejrnktfghiodabwjenkrveryveryverylongwordgjralkdsfjnajfhgnlasdgnmlejahsgndmjighfjndkgshdnfkmeaijrdghfnkmesjdghnkmjgkmdsijgrndfkmdedsoijgdnkmijsgdnbckmdoseijdkoghjndksoeighufdkoseijfgnxdkoseijgncdkoseijrsgfkmdoewrijfgnckmxdoseijrgfnkdleoijrfgnckmdosfeijrdfkeirjhtungkmfidjenkmrtofgijdnzerawkmlortgifuhjndekwirghufjcnkmdseijrfgndkmseijrgfnckmdxosejirtfgknmdoewaijrtcfgkdxoewajirgfncaghfkdjnahfbdjnsmjfndmsjehrdksehbrsdkmjherbcmvkxdsjhebfcnvkxdioshuerjtkngfdhiuswjbeqnrkfglhdbsanwkeriofghubcjvnxkzsalijwehurbjcnvkxaisdhuwrgjdksaioehurwgdfjknsioehuwcjknvihuxdgsbejrnktfghiodabwjenkrveryveryverylongwordgjralkdsfjnajfhgnlasdgnmlejahsgndmjighfjndkgshdnfkmeaijrdghfnkmesjdghnkmjgkmdsijgrndfkmdedsoijgdnkmijsgdnbckmdoseijdkoghjndksoeighufdkoseijfgnxdkoseijgncdkoseijrsgfkmdoewrijfgnckmxdoseijrgfnkdleoijrfgnckmdosfeijrdfkeirjhtungkmfidjenkmrtofgijdnzerawkmlortgifuhjndekwirghufjcnkmdseijrfgndkmseijrgfnckmdxosejirtfgknmdoewaijrtcfgkdxoewajirgfncaghfkdjnahfbdjnsmjfndmsjehrdksehbrsdkmjherbcmvkxdsjhebfcnvkxdioshuerjtkngfdhiuswjbeqnrkfglhdbsanwkeriofghubcjvnxkzsalijwehurbjcnvkxaisdhuwrgjdksaioehurwgdfjknsioehuwcjknvihuxdgsbejrnktfghiodabwjenkrveryveryverylongwordgjralkdsfjnajfhgnlasdgnmlejahsgndmjighfjndkgshdnfkmeaijrdghfnkmesjdghnkmjgkmdsijgrndfkmdedsoijgdnkmijsgdnbckmdoseijdkoghjndksoeighufdkoseijfgnxdkoseijgncdkoseijrsgfkmdoewrijfgnckmxdoseijrgfnkdleoijrfgnckmdosfeijrdfkeirjhtungkmfidjenkmrtofgijdnzerawkmlortgifuhjndekwirghufjcnkmdseijrfgndkmseijrgfnckmdxosejirtfgknmdoewaijrtcfgkdxoewajirgfncaghfkdjnahfbdjnsmjfndmsjehrdksehbrsdkmjherbcmvkxdsjhebfcnvkxdioshuerjtkngfdhiuswjbeqnrkfglhdbsanwkeriofghubcjvnxkzsalijwehurbjcnvkxaisdhuwrgjdksaioehurwgdfjknsioehuwcjknvihuxdgsbejrnktfghiodabwjenkr'] = ClientSocket()
         # Mutex lock so only one thread can access account_list at a given time
         # Need this to be a Recursive mutex as some subfunctions call on lock on
         # top of a locked function
@@ -1027,21 +1031,27 @@ class Server:
             # ["action", "client_username", "password", "recipient_username", "message", "available_messages"]
             server_action = action.split("we_hate_cs262")
 
+            # if the action that the client took was "login"
             if server_action[0] == "login":
                 self.save_login_action(server_action)
 
+            # if the action that the client took was "create"
             elif server_action[0] == "create":
                 self.save_create_action(server_action)
 
+            # if the action that the client took was "delete"
             elif server_action[0] == "delete":
                 self.save_delete_action(server_action)
 
+            # if the action that the client took was "send message"
             elif server_action[0] == "sendmsg":
                 self.save_sendmsg_action(server_action)
 
+            # if the action that the client took was "get messages"
             elif server_action[0] == "msgspls":
                 self.save_msgspls_action(server_action)
 
+            # if the action that the client took was "logout"
             elif server_action[0] == "logout":
                 self.save_logout_action(server_action)
 
@@ -1078,7 +1088,7 @@ class Server:
             elif data.lower().strip()[:6] == 'create':
                 curr_user = self.create_username(host, port, conn)
 
-            # check if data equals 'delete'- take substring as we send  delete + username to server
+            # check if data equals 'delete'- take substring as we send delete + username to server
             elif data.lower().strip()[:6] == 'delete':
                 # data parsing works correctly
                 # print(data, data.lower().strip(), data.lower().strip()[6:])
@@ -1116,6 +1126,7 @@ class Server:
     # function to establish connections between the servers
 
     def connect_to_other_servers(self):
+        # construct the message to send to the other servers to indicate that we are a server connection
         message = str(self.port) + "server" + str(self.is_leader)
         if self.port == self.ports[1]:
             self.other_server_sockets[0][0].connect((self.host, self.ports[0]))
@@ -1135,7 +1146,7 @@ class Server:
     # function to detect server failure 
     def detect_server_failure(self):
         # TODO do this
-        print("this is the failure time", failure_time)
+        print("this server has failed: ", self.port)
 
 
     # function to elect a new server leader
@@ -1143,6 +1154,22 @@ class Server:
         # TODO do this 
         new_server = "hi?"
         print("new server is ", new_server)
+
+
+    # function to mimic server failure
+    # makes the server sleep for a certain amount of time
+    def start_server_failure(self):
+        # make the server sleep for five seconds to simulate server failure
+        self.heartbeat.cancel()
+        print("This server has failed")
+        time.sleep(5.0)
+        self.reboot_server()
+
+    
+    # function to reboot the server
+    def reboot_server(self):
+        self.run_server_program()
+        print("Rebooted the server.")
 
 
     # this program sets up the server + creates new threads for clients
@@ -1153,17 +1180,26 @@ class Server:
         self.server.listen()
         print('Server is active')
 
+
     def run_server_program(self):
         host = self.host
         port = self.port
 
         self.connect_to_other_servers()
 
+        failure_interval = self.heartbeat_interval * random.uniform(1.0, 5.0)
+
+        print("This Server will fail in " + str(failure_interval) + " seconds.")
+
         # set up the send heartbeat function if you are a leader
-        heartbeat = RepeatingTimer(heartbeat_interval, self.send_heartbeat_actions)
-        heartbeat.start()  # after 30 seconds, "hello, world" will be printed
+        self.heartbeat = RepeatingTimer(self.heartbeat_interval, self.send_heartbeat_actions)
+        self.heartbeat.start()
         # if you're no longer leader, want to cancel it
         # t.cancel() # cancels execution, this only works before the 30 seconds is elapsed
+
+        # set up the failure function to make the server stop responding to mimic failure
+        server_failure = Timer(failure_interval, self.start_server_failure)
+        server_failure.start()
 
         # set up the receive heartbeat function if you are a follower
         receive_heartbeat = threading.Thread(
