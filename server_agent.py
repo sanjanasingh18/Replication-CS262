@@ -74,6 +74,9 @@ class Server:
         # create a variable to store the time interval for the heartbeat actions
         self.heartbeat_interval = 1.0
 
+        # create a variable to store the time interval that will detect failure from
+        self.failure_alert_time = self.heartbeat_interval * 1.5
+
         # have a list of failed server ports so the other servers know not to send things to them
         self.failed_server_ports = []
 
@@ -1155,24 +1158,48 @@ class Server:
             self.other_server_sockets[1][0].sendto(
                 message.encode(), (self.host, self.ports[1]))
 
-
+    # TODO- pick 2 servers to fail based on port index
+    # make it a global variable so you can pick any 2 indices to fail
+    """
     # function to detect server failure 
     def detect_server_failure(self):
         # TODO do this, add the logic for checking if some of the other servers have failed
         # this is pseudocode but this is the main idea
 
+        # [(port1, timestamp), (port2, timestamp), (port3, timestamp)]
+        # self.server_comms
+        cur_time = datetime.datetime.now()
+        # TODO- SS add the math for this
         for conn, port in self.other_server_conns:
+            # find timestamp corresponding to port in self.server_comms
+            for port_val, most_recent_heartbeat_time in enumerate(self.server_comms):
+                if port == port_val:
+                    # use that timestamp to detect server failure
+                    if cur_time > (most_recent_heartbeat_time + self.failure_alert_time):
+                        # then server has failed:
+                        self.failed_server_ports.append(port)
+                        print("Server with port #", port, "has failed")
+
         #     # fix the logic for this if statement
         #     if server has failed:
         #         self.failed_server_ports.append(port)
         #         print("this server has failed: ", port)
         
         for server_socket, port in self.other_server_sockets:
+            # find timestamp corresponding to port in self.server_comms
+            for port_val, most_recent_heartbeat_time in enumerate(self.server_comms):
+                if port == port_val:
+                    # use that timestamp to detect server failure
+                    if cur_time > (most_recent_heartbeat_time + self.failure_alert_time):
+                        # then server has failed:
+                        self.failed_server_ports.append(port)
+                        print("Server with port #", port, "has failed")
         #     if server has failed:
         #         self.failed_server_ports.append(port)
         #         print("this server has failed: ", port)
 
-
+    """
+    
     # function to elect a new server leader
     def elect_server_leader(self):
         # TODO do this 
