@@ -1159,15 +1159,18 @@ class Server:
     # function to mimic server failure
     # makes the server sleep for a certain amount of time
     def start_server_failure(self):
-        # make the server sleep for five seconds to simulate server failure
+        # if the server fails, you want to stop the heartbeat action
         self.heartbeat.cancel()
         print("This server has failed")
+        # make the server sleep for five seconds to simulate server failure
         time.sleep(5.0)
+        # once the sleep time has stopped, we can reboot the server
         self.reboot_server()
 
     
     # function to reboot the server
     def reboot_server(self):
+        # reboot the server to start sending heartbeat actions again
         self.run_server_program()
         print("Rebooted the server.")
 
@@ -1194,8 +1197,6 @@ class Server:
         # set up the send heartbeat function if you are a leader
         self.heartbeat = RepeatingTimer(self.heartbeat_interval, self.send_heartbeat_actions)
         self.heartbeat.start()
-        # if you're no longer leader, want to cancel it
-        # t.cancel() # cancels execution, this only works before the 30 seconds is elapsed
 
         # set up the failure function to make the server stop responding to mimic failure
         server_failure = Timer(failure_interval, self.start_server_failure)
