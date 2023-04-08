@@ -78,7 +78,7 @@ class Server:
         self.failure_alert_time = 1.5
 
         # have a list of failed server ports so the other servers know not to send things to them
-        self.failed_server_ports = []
+        self.failed_server_ports = set()
 
         # define the other ports that will be used for the other servers
         other_ports = [x for x in self.ports if x != self.port]
@@ -744,6 +744,7 @@ class Server:
                 # confirmation = other_server_conn.recv(1024).decode()
                 # print("this is sent from the other server", confirmation)
                 # check that each server is not in the list of failed servers
+                print("FAILED SERVERS ARE", self.failed_server_ports)
 
                 if other_server_port not in self.failed_server_ports:
                     # send every action that has occured in between heartbeats to each other server
@@ -754,6 +755,7 @@ class Server:
 
             # for each of the other non leader servers in the server sockets connections
             for other_server_socket, other_server_port in self.other_server_sockets:
+                print("FAILED SERVERS ARE", self.failed_server_ports)
                 # first send over the length of the actions string
                 # other_server_socket.sendto(
                 #     actions_length.encode(), (self.host, other_server_port))
@@ -777,6 +779,7 @@ class Server:
             print("THIS IS MY PORT", self.port)
             # send life update to each of the other servers in the conn connections
             for other_server_conn, other_server_port in self.other_server_conns:
+                print("FAILED SERVERS ARE", self.failed_server_ports)
                 # check that each server is not in the list of failed servers
                 if other_server_port not in self.failed_server_ports:
                     # send over a life update
@@ -786,6 +789,7 @@ class Server:
 
             # send life update to each of the other servers in the server connections
             for other_server_socket, other_server_port in self.other_server_sockets:
+                print("FAILED SERVERS ARE", self.failed_server_ports)
                 # check that each server is not in the list of failed servers
                 if other_server_port not in self.failed_server_ports:
                     # send over a life update
@@ -1182,7 +1186,7 @@ class Server:
                     print('failure time, cur time', failure_bound, cur_time)
                     if cur_time > failure_bound:
                         # then server has failed:
-                        self.failed_server_ports.append(port)
+                        self.failed_server_ports.add(port)
                         print("Server with port #", port, "has failed")
 
         for server_socket, port in self.other_server_sockets:
@@ -1194,7 +1198,7 @@ class Server:
                     print('failure time, cur time', failure_bound, cur_time)
                     if cur_time > failure_bound:
                         # then server has failed:
-                        self.failed_server_ports.append(port)
+                        self.failed_server_ports.add(port)
                         print("Server with port #", port, "has failed")
 
 
