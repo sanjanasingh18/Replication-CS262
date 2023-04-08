@@ -759,6 +759,7 @@ class Server:
         else: 
             # send out the port of the curent server so that the other servers know this server is alive
             server_update = str(self.port)
+            print("THIS IS MY PORT", self.port)
             # send life update to each of the other servers in the conn connections
             for other_server_conn, other_server_port in self.other_server_conns:
                 # send over a life update
@@ -803,6 +804,7 @@ class Server:
                     else:
                         # receive the update from the server
                         other_server_update = int(server_conn.recv(2048).decode())
+                        print("OTHER SERVER PORT UPDATE FROM", other_server_update)
                         # automatically update the time stamp for the tuple at the index for the corresponding port
                         self.server_comms[self.ports.index(other_server_update)] = (other_server_update, datetime.datetime.now())
                         print("THIS IS THE CURRENT STATUS", self.server_comms)
@@ -1182,13 +1184,15 @@ class Server:
         self.server.bind((host, port))
         self.server.listen()
         print('Server is active')
+        # connect to the other servers
+        self.connect_to_other_servers()
+        print('Server is connected to other servers')
 
 
     def run_server_program(self):
         host = self.host
         port = self.port
 
-        self.connect_to_other_servers()
 
         failure_interval = self.heartbeat_interval * random.uniform(1.0, 5.0)
 
