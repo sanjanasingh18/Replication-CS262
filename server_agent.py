@@ -1214,18 +1214,14 @@ class Server:
     # function to mimic server failure
     # makes the server sleep for a certain amount of time
     def start_server_failure(self):
-        # if this server has an index which is 'allowed to fail' (system is 2 fault-tolerant
-        # so we have at most 2 servers failing), then have it fail.
-        index_of_self = self.ports.index(self.port)
-        if index_of_self in failure_indices:
-            # if the server fails, you want to stop the heartbeat action
-            self.heartbeat.cancel()
-            print("This server has failed")
-            # make the server sleep for five seconds to simulate server failure
-            time.sleep(5.0)
-            # once the sleep time has stopped, we can reboot the server
-            self.reboot_server()
-        # otherwise, continue
+        # if the server fails, you want to stop the heartbeat action
+        self.heartbeat.cancel()
+        print("This server has failed")
+        # make the server sleep for five seconds to simulate server failure
+        time.sleep(5.0)
+        # once the sleep time has stopped, we can reboot the server
+        self.reboot_server()
+
 
     
     # function to reboot the server
@@ -1260,18 +1256,21 @@ class Server:
         port = self.port
 
 
-        failure_interval = self.heartbeat_interval * random.uniform(1.0, 15.0)
-
-        print("This Server will fail in " + str(failure_interval) + " seconds.")
-
         # set up the send heartbeat function if you are a leader
         self.heartbeat = RepeatingTimer(self.heartbeat_interval, self.send_heartbeat_actions)
         self.heartbeat.start()
 
-        # set up the failure function to make the server stop responding to mimic failure
-        # one time timer (not repeated) as you will run 'run_server_program' to reboot server.
-        server_failure = Timer(failure_interval, self.start_server_failure)
-        server_failure.start()
+        # if this server has an index which is 'allowed to fail' (system is 2 fault-tolerant
+        # so we have at most 2 servers failing), then have it fail.
+        index_of_self = self.ports.index(self.port)
+        if index_of_self in failure_indices:
+            failure_interval = self.heartbeat_interval * random.uniform(1.0, 15.0)
+            print("This Server will fail in " + str(failure_interval) + " seconds.")
+
+            # set up the failure function to make the server stop responding to mimic failure
+            # one time timer (not repeated) as you will run 'run_server_program' to reboot server.
+            server_failure = Timer(failure_interval, self.start_server_failure)
+            server_failure.start()
 
         # set up the receive heartbeat function if you are a follower
         receive_heartbeat = threading.Thread(
