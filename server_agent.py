@@ -808,6 +808,7 @@ class Server:
             if not self.is_leader:
                 # create a variable to hold our actions string
                 server_message = ""
+                print("HELLO 1")
                 # check if the leader server exists in the server_conns connection list
                 for server_conn, port in self.other_server_conns:
                     # if we found the leader server connection, decode from the leader
@@ -858,6 +859,7 @@ class Server:
 
                 # check if the leader server exists in the server_sockets connection list
                 for server_socket, port in self.other_server_sockets:
+                    print("HELLOOO 2")
                     # if we found the leader server connection, decode from the leader
                     if port == self.curr_leader:
                         print("I think the leader is ", self.curr_leader)
@@ -870,6 +872,7 @@ class Server:
                         #     "ok".encode(), (self.host, port))
                         # receive the actions string using the length of actions string
                         server_message += server_socket.recv(2048).decode()
+                        print("THIS IS WHAT I GOT POST REBOOT", server_message)
                         # if we receive a server reboot update
                         if server_message[:13] == "server_reboot":
                             # get the port number of the rebooted server
@@ -1246,7 +1249,8 @@ class Server:
                     # use that timestamp to detect server failure
                     failure_bound = most_recent_heartbeat_time + datetime.timedelta(seconds=1.5)
                     print('failure time, cur time', failure_bound, cur_time)
-                    if cur_time > failure_bound:
+                    # if cur_time > failure_bound:
+                    if not self.is_leader:
                         # then server has failed:
                         self.failed_server_ports.add(port)
                         print("Server with port #", port, "has failed")
@@ -1262,7 +1266,6 @@ class Server:
                         # then server has failed:
                         self.failed_server_ports.add(port)
                         print("Server with port #", port, "has failed")
-
 
 
     # function to elect a new server leader
@@ -1335,22 +1338,9 @@ class Server:
         host = self.host
         port = self.port
 
-
         # set up the send heartbeat function if you are a leader
         self.heartbeat = RepeatingTimer(self.heartbeat_interval, self.send_heartbeat_actions)
         self.heartbeat.start()
-
-        # if this server has an index which is 'allowed to fail' (system is 2 fault-tolerant
-        # so we have at most 2 servers failing), then have it fail.
-        index_of_self = self.ports.index(self.port)
-        if index_of_self in failure_indices:
-            failure_interval = self.heartbeat_interval * random.uniform(1.0, 15.0)
-            print("This Server will fail in " + str(failure_interval) + " seconds.")
-
-            # set up the failure function to make the server stop responding to mimic failure
-            # one time timer (not repeated) as you will run 'run_server_program' to reboot server.
-            server_failure = Timer(failure_interval, self.start_server_failure)
-            server_failure.start()
 
         # set up the receive heartbeat function if you are a follower
         receive_heartbeat = threading.Thread(
@@ -1358,6 +1348,19 @@ class Server:
 
         # start the thread
         receive_heartbeat.start()
+
+        # if this server has an index which is 'allowed to fail' (system is 2 fault-tolerant
+        # so we have at most 2 servers failing), then have it fail.
+        index_of_self = self.ports.index(self.port)
+        if index_of_self in failure_indices:
+            # failure_interval = self.heartbeat_interval * random.uniform(1.0, 15.0)
+            failure_interval = 7.0
+            print("This Server will fail in " + str(failure_interval) + " seconds.")
+
+            # set up the failure function to make the server stop responding to mimic failure
+            # one time timer (not repeated) as you will run 'run_server_program' to reboot server.
+            server_failure = Timer(failure_interval, self.start_server_failure)
+            server_failure.start()
 
         # while True, listen!
         while True:
