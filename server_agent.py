@@ -28,7 +28,6 @@ servers = []
 all_server_indices = [0, 1, 2]
 # set the indices of the servers that can fail (to demo 2-fault tolerant system)
 # can alter these to be any 2 values between 0 and 2
-failure_indices = [0]
 failure_indices = [1]
 failure_interval = 10.0
 
