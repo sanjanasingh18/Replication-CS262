@@ -730,7 +730,7 @@ class Server:
         actions = self.generate_server_actions_string()
         actions_length = str(len(actions))
 
-        print("leader LEADER?!", str(self.is_leader))
+        print("Am i the LEADER?!", str(self.is_leader))
 
         # if the server is a leader, on each heart beat send out the list of heart beat actions
         # to the other non leader servers
@@ -806,13 +806,14 @@ class Server:
     # function for non leader servers to receive actions from leader and process the actions
 
     def receive_heartbeat_action(self):
+        print("calling this once")
         while True:
             print("IN RECEIVE ACTIONS")
             # if server is not a leader, it recieves actions from the leader
             if not self.is_leader:
                 # create a variable to hold our actions string
                 server_message = ""
-                print("HELLO 1")
+                print("I am not the leader")
                 # check if the leader server exists in the server_conns connection list
                 for server_conn, port in self.other_server_conns:
                     # if we found the leader server connection, decode from the leader
@@ -863,7 +864,7 @@ class Server:
 
                 # check if the leader server exists in the server_sockets connection list
                 for server_socket, port in self.other_server_sockets:
-                    print("HELLOOO 2")
+                    print("Server Sockets for loop!")
                     # if we found the leader server connection, decode from the leader
                     if port == self.curr_leader:
                         print("I think the leader is ", self.curr_leader)
@@ -917,6 +918,7 @@ class Server:
                 
             # receive life updates from other servers if you are the leader
             else:
+                print("I am the leader!")
                 # check if the leader server exists in the server_conns connection list
                 for server_conn, port in self.other_server_conns:
                     # receive the update from the server
@@ -1386,8 +1388,6 @@ class Server:
             # Start a new thread with this client
             curr_thread = threading.Thread(
                 target=self.server_reroute, args=(host, conn, port))
-
-            # curr_thread = threading.Thread(target=self.server_to_client, args=(host, conn, port,))
 
             curr_thread.start()
 
