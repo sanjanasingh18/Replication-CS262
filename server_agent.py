@@ -28,7 +28,7 @@ servers = []
 all_server_indices = [0, 1, 2]
 # set the indices of the servers that can fail (to demo 2-fault tolerant system)
 # can alter these to be any 2 values between 0 and 2
-failure_indices = []
+failure_indices = [0]
 failure_interval = 25.0
 failure_detection_time = 7.0
 failmsg = "mandown:("
@@ -1212,12 +1212,20 @@ class Server:
             else: 
                 self.curr_leader = self.ports[2]
 
-        # if you are the new server leader, inform all clients!
-        if self.curr_leader == self.port:
-            message = "nEwLeAdEr" + str(self.port)
-            for client_conn, client_port in self.client_conns:
-                client_conn.sendto(
-                    message.encode(), (self.host, client_port))
+        # TODO talk about this- it might make it easier on the client side :-)
+
+        # # if you are the new server leader, inform all clients!
+        # if self.curr_leader == self.port:
+        #     message = "nEwLeAdEr" + str(self.port)
+        #     for client_conn, client_port in self.client_conns:
+        #         client_conn.sendto(
+        #             message.encode(), (self.host, client_port))
+
+        # if you there is a new server leader, inform all clients!
+        message = "nEwLeAdEr" + str(self.curr_leader)
+        for client_conn, client_port in self.client_conns:
+            client_conn.sendto(
+                message.encode(), (self.host, client_port))
                 
 
         print("!! Introducing the new server...", self.curr_leader)

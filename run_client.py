@@ -3,6 +3,10 @@ import socket
 import math
 import time
 import uuid
+from _thread import *
+from collections import Counter
+import threading
+from threading import Timer
 
 set_port = 8881
 set_host = ''
@@ -383,6 +387,11 @@ class ClientSocket:
     # will receive from server the length of the account_list
     len_list = self.client.recv(1024).decode()
 
+    # check if the leader server has changed
+    if self.check_server_leader(len_list):
+      self.list_server_accounts(client_message, host)
+      return
+
     # send confirmation to control input flow
     message = 'Ok'
     self.client.sendto(message.encode(), (host, self.leader_server_port))
@@ -441,10 +450,19 @@ class ClientSocket:
       curr_leader_str = self.client_sockets[ind].recv(1024).decode()
       self.updateLeaderServer(int(curr_leader_str[10:]))
       print(port,  "done!", curr_leader_str)
+    
+    # for ind, port in enumerate(self.ports):
+    #   if ind>0:
+    #     # set up threads for other files
+    #     new_thread = threading.Thread(target=client_logic, args=(port))
+
+    self.client_logic(self.leader_server_port)
 
     # handle initial information flow- either will login or create a new account
     # You need to either log in or create an account first
 
+  def client_logic(self, port):
+    host = set_host
     while not self.logged_in:
       # handle initial information flow- either will login or create a new account
       message = input("""

@@ -31,3 +31,6 @@ need to have new leader inform other ppl it is updateLeaderServer
 ISSUE: leader server on client side stays the same (I THINK?)
 what if you restart a connection? how does it know who leader is?
 maybe when you init, send who leader is
+
+CURRENTLY: it works to update the leader when you restart a connection but not when the leader fails
+TODO: fix the updateLeaderServer function 
