@@ -24,3 +24,4 @@ how to inform other ppl of new leader?
 FIGURE THIS OUT rn
 
 detect_server_Failure should do a leader election if leader fails
+need to have new leader inform other ppl it is leader * i think this works rn

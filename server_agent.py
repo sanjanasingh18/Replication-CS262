@@ -28,7 +28,7 @@ servers = []
 all_server_indices = [0, 1, 2]
 # set the indices of the servers that can fail (to demo 2-fault tolerant system)
 # can alter these to be any 2 values between 0 and 2
-failure_indices = [0]
+failure_indices = [0, 1]
 failure_interval = 5.0
 failure_detection_time = 7.0
 failmsg = "mandown:("
@@ -812,7 +812,8 @@ class Server:
                 if failmsg in server_message:
                     # do not update server_comms
                     print("ManDown", port)
-                    self.failed_server_ports.add(port)
+                    # TODO- I added then deleted this line bc we only should do this bt time
+                    #self.failed_server_ports.add(port)
 
                 # if we receive a server reboot update
                 elif server_message[:13] == "server_reboot":
@@ -847,7 +848,8 @@ class Server:
                 if failmsg in server_message:
                     # do not update server_comms
                     print("ManDown", port)
-                    self.failed_server_ports.add(port)
+                    # TODO- I added then deleted this line bc we only should do this bt time
+                    #self.failed_server_ports.add(port)
 
                 # if we receive a server reboot update
                 elif server_message[:13] == "server_reboot":
@@ -1162,6 +1164,11 @@ class Server:
 
     # function to detect server failure based on timestamps
     def detect_server_failure(self):
+        # additional case if you are the leader who has failed
+        if self.curr_leader in self.failed_server_ports:
+            print("Electing a new leader...")
+            self.elect_new_server_leader()
+
         cur_time = datetime.datetime.now()
         print("self.server_comms:", self.server_comms)
         for port_val, most_recent_heartbeat_time in self.server_comms:
@@ -1198,7 +1205,7 @@ class Server:
             # conclude that the third server must be functioning- a 2F tolerant system
             else: 
                 self.curr_leader = self.ports[2]
-        print("new server is ", self.curr_leader)
+        print("!! Introducing the new server...", self.curr_leader)
 
         # send message to other servers- if you are the leader vs if you aren't
         # TODO tbd if we add bc we currently have consensus on who fails
@@ -1212,21 +1219,27 @@ class Server:
 
         # MODIFIED- try to have the heartbeat just send 'mandown'
         self.heartbeat_message = failmsg
+        self.failed_server_ports.add(self.port)
         # if the server fails, you want to stop the heartbeat action
         #self.heartbeat.cancel()
         # make the server sleep for five seconds to simulate server failure
         begin_time = datetime.datetime.now()
         print("This server has failed at", begin_time)
-        while datetime.datetime.now() < begin_time + datetime.timedelta(seconds=15):
+        # COMMENTSS- TODO look at this 
+        # do we just this be a 15 second sleep? other threads continue but 
+        # it sends diff messages so its comms time isnt updated
+        time.sleep(20)
+        #while datetime.datetime.now() < begin_time + datetime.timedelta(seconds=15):
+            #continue
             # decode messages
-            for server_conn, port in self.other_server_conns:
+            #for server_conn, port in self.other_server_conns:
                 # print("RECEIVING BUT NOT DECODING", self.other_server_conns)
                 # if we found the leader server connection, decode from the leader
-                server_conn.recv(2048).decode()
-            for server_socket, port in self.other_server_sockets:
+                #server_conn.recv(2048).decode()
+            #for server_socket, port in self.other_server_sockets:
                 # print("RECEIVING BUT NOT DECODING", self.other_server_sockets)
                 # if we found the leader server connection, decode from the leader
-                server_socket.recv(2048).decode()
+                #server_socket.recv(2048).decode()
 
         # once the sleep time has stopped, we can reboot the server
         self.reboot_server()
@@ -1242,6 +1255,7 @@ class Server:
         # reboot the server to start sending heartbeat actions again
         self.send_server_reboot_message()
         self.heartbeat_message = str(self.port)
+        self.failed_server_ports.remove(self.port)
         self.reset_server_comms()
         # time.sleep(0.1)
         print("Successfully rebooted this server...")
