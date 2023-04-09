@@ -1,0 +1,24 @@
+SS thoughts post 4/8 collective crisis
+# try to revise run_client 
+the issue with run_client rn is that the client talks to only 
+one server and waits for THAT server to tell you that it failed...
+instead,
+we want it to be talking to each server.
+
+1)
+maybe instead it has 3 separate connections in threads
+(or it waits a second for each server to hit it back?) if no response,
+just stop talking to that guy.
+** this seems so confusing.
+
+2)
+______(good) IDEA!!!!____________
+what if the client waits half a second for a response from the server each time,
+
+if it takes longer, try to decode the next server for a half second and then, updateLeaderServer()
+if not, try to decode the third server for a half second then, updateLeaderServer()
+
+
+** it seems easiest to do it with grpc. 
+** use the stub server but then we have to redo all
+** of persistence
