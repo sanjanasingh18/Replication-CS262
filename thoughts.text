@@ -19,6 +19,8 @@ if it takes longer, try to decode the next server for a half second and then, up
 if not, try to decode the third server for a half second then, updateLeaderServer()
 
 
-** it seems easiest to do it with grpc. 
-** use the stub server but then we have to redo all
-** of persistence
+now set up the client/server comms
+how to inform other ppl of new leader?
+FIGURE THIS OUT rn
+
+detect_server_Failure should do a leader election if leader fails
