@@ -797,11 +797,15 @@ class Server:
 
     def receive_heartbeat_action(self):
         while True:
+            print("HELLO1")
             # receive for each of the servers in the conns list
             for server_conn, port in self.other_server_conns:
+                print("HELLO 2")
                 # decode the message we have received from a server
                 server_message = server_conn.recv(2048).decode()
+                print("HellO 3")
                 self.server_comms[self.ports.index(port)] = (port, datetime.datetime.now())
+                print("Helloe 4")
                 # print("I think the leader is ", self.curr_leader)
                 # if we receive a server reboot update
                 if server_message[:13] == "server_reboot":
@@ -819,10 +823,11 @@ class Server:
 
             # receive from each of the servers in the server_sockets connection list
             for server_socket, port in self.other_server_sockets:
-                # print("HELLOOO 2", self.other_server_sockets)
                 # decode the message we have received from a server 
+                print("HELLO 5")
                 server_message = server_socket.recv(2048).decode()
                 self.server_comms[self.ports.index(port)] = (port, datetime.datetime.now())
+                print("HELLO 6")
                 # if we receive a server reboot update
                 if server_message[:13] == "server_reboot":
                     # remove the rebooted server from the list of failed servers
@@ -1129,17 +1134,13 @@ class Server:
 
     # function to detect server failure 
     def detect_server_failure(self):
-        # TODO do this, add the logic for checking if some of the other servers have failed
-        # this is pseudocode but this is the main idea
-        # self.receive_heartbeat_action()
-
         cur_time = datetime.datetime.now()
         print("self.server_comms:", self.server_comms)
         for port_val, most_recent_heartbeat_time in self.server_comms:
             if most_recent_heartbeat_time:
                 # print("HEAR?TBEAT COMMS???", most_recent_heartbeat_time, port_val)
                 failure_bound = most_recent_heartbeat_time + datetime.timedelta(seconds=failure_detection_time)
-                # print('failure time, cur time', failure_bound, cur_time, cur_time > failure_bound)
+                print('failure time, cur time', failure_bound, cur_time, cur_time > failure_bound)
                 if cur_time > failure_bound:
                     # then server has failed:
                     self.failed_server_ports.add(port_val)
@@ -1147,9 +1148,10 @@ class Server:
 
 
     # function to elect a new server leader
-    def elect_server_leader(self):
-        # TODO do this 
-        new_server = "hi?"
+    def elect_new_server_leader(self):
+        # if our current leader server has failed
+        if self.curr_leader in self.failed_server_ports:
+            # elect a new leader server 
         print("new server is ", new_server)
 
 
@@ -1162,7 +1164,7 @@ class Server:
         # make the server sleep for five seconds to simulate server failure
         begin_time = datetime.datetime.now()
 
-        while datetime.datetime.now() < begin_time + datetime.timedelta(seconds=5):
+        while datetime.datetime.now() < begin_time + datetime.timedelta(seconds=15):
             # decode messages
             for server_conn, port in self.other_server_conns:
                 # print("RECEIVING BUT NOT DECODING", self.other_server_conns)
@@ -1194,8 +1196,6 @@ class Server:
 
     # function to tell the other servers that this server has been rebooted
     def send_server_reboot_message(self):
-        # TODO add/fix logic here so that once this server is rebooted, we can tell the other servers so they know 
-        # to remove this server from the list of failed servers. 
         # variable to store the reboot message in the format "server_reboot" + "{port_number}"
         reboot_message = "server_reboot" + str(self.port)
 
@@ -1242,6 +1242,14 @@ class Server:
         # set up the send heartbeat function if you are a leader and sufficient servers have connected
         self.start_heartbeat()
 
+
+        # set up the receive heartbeat function if you are a follower
+        receive_heartbeat = threading.Thread(
+            target=self.receive_heartbeat_action)
+
+        # start the thread
+        receive_heartbeat.start()
+
         # if this server has an index which is 'allowed to fail' (system is 2 fault-tolerant
         # so we have at most 2 servers failing), then have it fail.
         index_of_self = self.ports.index(self.port)
@@ -1253,13 +1261,6 @@ class Server:
             # one time timer (not repeated) as you will run 'run_server_program' to reboot server.
             server_failure = Timer(failure_interval, self.start_server_failure)
             server_failure.start()
-
-        # set up the receive heartbeat function if you are a follower
-        receive_heartbeat = threading.Thread(
-            target=self.receive_heartbeat_action)
-
-        # start the thread
-        receive_heartbeat.start()
 
         # while True, listen!
         while True:

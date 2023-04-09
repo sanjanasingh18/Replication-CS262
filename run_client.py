@@ -32,10 +32,18 @@ class ClientSocket:
       for _ in self.ports:
         self.client_sockets.append(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
 
-    self.client = self.client_sockets[0]
+    # set the port for the leader server socket
     self.leader_server_port = self.ports[0]
+    self.port_index = self.ports.index(self.leader_server_port)
+    self.client = self.client_sockets[self.port_index]
 
   # basic get/set functions to allow for the server to update these values
+
+  def updateLeaderServer(self, port):
+    # set the port connection for the leader server socket
+    self.leader_server_port = port
+    self.port_index = self.ports.index(self.leader_server_port)
+    self.client = self.client_sockets[self.port_index]
 
   def getStatus(self):
     return self.logged_in
@@ -320,11 +328,9 @@ class ClientSocket:
   def check_server_leader(self, message):
     # check if the server is telling us that we have a new leader
     if message[:9] == "nEwLeAdEr":
-      # get the port and port index of the new leader
-      self.leader_server_port = int(message[9:])
-      leader_port_ind = self.ports.index(self.leader_server_port)
-      # set the socket we communicate on to be the leader server
-      self.client = self.client_sockets[leader_port_ind]
+      # get the port and port index of the new leader and
+      # set the client to communicate to the new server
+      self.updateLeaderServer(int(message[9:]))
 
       # return True if we have elected a new leader
       return True
