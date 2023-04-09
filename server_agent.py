@@ -849,11 +849,7 @@ class Server:
 
                 # check if the leader server exists in the server_sockets connection list
                 for server_socket, port in self.other_server_sockets:
-<<<<<<< HEAD
-                    print("Server Sockets for loop!")
-=======
                     print("HELLOOO 2", self.other_server_sockets)
->>>>>>> 6eb27f7 (still not working AHHH)
                     # if we found the leader server connection, decode from the leader
                     if port == self.curr_leader:
                         print("I think the leader is ", self.curr_leader)
@@ -1375,7 +1371,7 @@ class Server:
             # Start a new thread with this client
             curr_thread = threading.Thread(
                 target=self.server_reroute, args=(host, conn, port))
-
+s
             curr_thread.start()
 
 
