@@ -29,7 +29,7 @@ all_server_indices = [0, 1, 2]
 # set the indices of the servers that can fail (to demo 2-fault tolerant system)
 # can alter these to be any 2 values between 0 and 2
 failure_indices = [1]
-failure_interval = 10.0
+failure_interval = 5.0
 
 
 class RepeatingTimer(Timer):
@@ -731,7 +731,6 @@ class Server:
     def send_heartbeat_actions(self):
         # get the list of server heart beat actions
         actions = self.generate_server_actions_string()
-        actions_length = str(len(actions))
 
         print("Am i the LEADER?!", str(self.is_leader))
 
@@ -742,32 +741,33 @@ class Server:
         self.detect_server_failure()
 
         if self.is_leader:
-            print("I am sending my heart beat actions length HERE", actions_length)
+            print("I am sending my heart beat actions length HERE", actions)
             # for each of the other non leader servers in the server conns connections
             for other_server_conn, other_server_port in self.other_server_conns:
                 # check that each server is not in the list of failed servers
                 print("FAILED SERVERS ARE", self.failed_server_ports)
-
-                if other_server_port not in self.failed_server_ports:
+                # check that each server is not in the list of failed servers
+                # if other_server_port not in self.failed_server_ports:
                     # send every action that has occured in between heartbeats to each other server
-                    other_server_conn.sendto(
-                        actions.encode(), (self.host, other_server_port))
-                    print("Sent actions: " + actions +
-                        " to " + str(other_server_port))
+                other_server_conn.sendto(
+                    actions.encode(), (self.host, other_server_port))
+                print("Sent actions: " + actions +
+                    " to " + str(other_server_port))
 
             # for each of the other non leader servers in the server sockets connections
             for other_server_socket, other_server_port in self.other_server_sockets:
                 print("FAILED SERVERS ARE", self.failed_server_ports)
                 # check that each server is not in the list of failed servers
-                if other_server_port not in self.failed_server_ports:
+                # if other_server_port not in self.failed_server_ports:
                     # send every action that has occured in between heartbeats to each other server
-                    other_server_socket.sendto(
-                        actions.encode(), (self.host, other_server_port))
-                    print("Sent actions: " + actions +
-                        " to " + str(other_server_port))
+                other_server_socket.sendto(
+                    actions.encode(), (self.host, other_server_port))
+                print("Sent actions: " + actions +
+                    " to " + str(other_server_port))
 
             # clear the heart beat actions list
             self.heartbeat_actions = []
+            
         # non leader servers send out updates to the other servers that have not failed
         else:
             # send out the port of the curent server so that the other servers know this server is alive
@@ -777,21 +777,21 @@ class Server:
             for other_server_conn, other_server_port in self.other_server_conns:
                 print("FAILED SERVERS ARE", self.failed_server_ports)
                 # check that each server is not in the list of failed servers
-                if other_server_port not in self.failed_server_ports:
-                    # send over a life update
-                    other_server_conn.sendto(
-                        server_update.encode(), (self.host, other_server_port))
-                    print("Sent life update to " + str(other_server_port))
+                # if other_server_port not in self.failed_server_ports:
+                # send over a life update
+                other_server_conn.sendto(
+                    server_update.encode(), (self.host, other_server_port))
+                print("Sent life update to " + str(other_server_port))
 
             # send life update to each of the other servers in the server connections
             for other_server_socket, other_server_port in self.other_server_sockets:
                 print("FAILED SERVERS ARE", self.failed_server_ports)
                 # check that each server is not in the list of failed servers
-                if other_server_port not in self.failed_server_ports:
-                    # send over a life update
-                    other_server_socket.sendto(
-                        server_update.encode(), (self.host, other_server_port))
-                    print("Sent life update to " + str(other_server_port))
+                # if other_server_port not in self.failed_server_ports:
+                # send over a life update
+                other_server_socket.sendto(
+                    server_update.encode(), (self.host, other_server_port))
+                print("Sent life update to " + str(other_server_port))
 
     # function for non leader servers to receive actions from leader and process the actions
 
@@ -799,139 +799,115 @@ class Server:
         print("calling this once")
         while True:
             # if server is not a leader, it recieves actions from the leader
-            if not self.is_leader:
-                # create a variable to hold our actions string
-                server_message = ""
-                print("I am not the leader")
-                # check if the leader server exists in the server_conns connection list
-                for server_conn, port in self.other_server_conns:
-                    # if we found the leader server connection, decode from the leader
-                    if port == self.curr_leader:
-                        print("I think the leader is ", self.curr_leader)
-                        # receive the actions string using the length of actions string
-                        server_message = server_conn.recv(2048).decode()
-                        #self.server_comms[self.ports.index(self.curr_leader)] = (self.curr_leader, datetime.datetime.now())
-                        self.server_comms[self.ports.index(port)] = (port, datetime.datetime.now())
-                        # if we receive a server reboot update
-                        if server_message[:13] == "server_reboot":
-                            # get the port number of the rebooted server
-                            rebooted_server = int(server_message[13:])
-                            # remove the rebooted server from the list of failed servers
-                            self.failed_server_ports.remove(rebooted_server)
-                            print("FAILER SERVERS AFTER REBOOT", self.failed_server_ports)
-                            print("Server", rebooted_server, "has been rebooted.")
-                        # otherwise we received an action item from the server
-                        else:
-                            print("Received actions: " +
-                                server_message + " from " + str(port))
-                            # automatically update the time stamp for the leader in server_comms when we receive heart beat actions
-                    # we want to receive an update from the other non leader servers
-                    else:
-                        server_message = server_conn.recv(2048).decode()
-                        self.server_comms[self.ports.index(port)] = (port, datetime.datetime.now())
-                        # if we receive a server reboot update
-                        if server_message[:13] == "server_reboot":
-                            # get the port number of the rebooted server
-                            rebooted_server = int(server_message[13:])
-                            # remove the rebooted server from the list of failed servers
-                            self.failed_server_ports.remove(rebooted_server)
-                            print("FAILER SERVERS AFTER REBOOT", self.failed_server_ports)
-                            print("Server", rebooted_server, "has been rebooted.")
-                        # otherwise we receive an update from the server
-                        else:
-                            other_server_update = int(server_message)
-                            print("OTHER SERVER PORT UPDATE FROM", other_server_update)
-                            # automatically update the time stamp for the tuple at the index for the corresponding port
-                            print("THIS IS THE CURRENT STATUS", self.server_comms)
+            # if not self.is_leader:
+            #     print("I am not the leader")
+            # check if the leader server exists in the server_conns connection list
+            for server_conn, port in self.other_server_conns:
+                # decode the message we have received from a server 
+                server_message = server_conn.recv(2048).decode()
+                self.server_comms[self.ports.index(port)] = (port, datetime.datetime.now())
+                # if port == self.curr_leader:
+                print("I think the leader is ", self.curr_leader)
+                # if we receive a server reboot update
+                if server_message[:13] == "server_reboot":
+                    # remove the rebooted server from the list of failed servers
+                    self.failed_server_ports.remove(port)
+                    print("FAILER SERVERS AFTER REBOOT", self.failed_server_ports)
+                    print("Server", port, "has been rebooted.")
+                # otherwise we received an action item from the server
+                else:
+                    print("Received actions: " +
+                        server_message + " from " + str(port))
 
-                # check if the leader server exists in the server_sockets connection list
-                for server_socket, port in self.other_server_sockets:
-                    print("HELLOOO 2", self.other_server_sockets)
-                    # if we found the leader server connection, decode from the leader
-                    if port == self.curr_leader:
-                        print("I think the leader is ", self.curr_leader)
-                        print("Waiting for step bro...")
-                        # receive the actions string using the length of actions string
-                        server_message = server_socket.recv(2048).decode()
-                        # self.server_comms[self.ports.index(self.curr_leader)] = (self.curr_leader, datetime.datetime.now())
-                        self.server_comms[self.ports.index(port)] = (port, datetime.datetime.now())
-                        print("step bro is hereee")
-                        # if we receive a server reboot update
-                        if server_message[:13] == "server_reboot":
-                            # get the port number of the rebooted server
-                            rebooted_server = int(server_message[13:])
-                            # remove the rebooted server from the list of failed servers
-                            self.failed_server_ports.remove(rebooted_server)
-                            print("FAILER SERVERS AFTER REBOOT", self.failed_server_ports)
-                            print("Server", rebooted_server, "has been rebooted.")
-                        # otherwise we received an action item from the server
-                        else:
-                            print("Received actions: " +
-                                server_message + " from " + str(port))
-                            # automatically update the time stamp for the leader in server_comms when we receive heart beat actions
-                            print("THIS IS THE UPDATE", self.server_comms[self.ports.index(self.curr_leader)])
-                    # we want to receive an update from the other non leader servers
-                    else:
-                        server_message = server_socket.recv(2048).decode()
-                        self.server_comms[self.ports.index(port)] = (port, datetime.datetime.now())
-                        # if we receive a server reboot update
-                        if server_message[:13] == "server_reboot":
-                            # get the port number of the rebooted server
-                            rebooted_server = int(server_message[13:])
-                            # remove the rebooted server from the list of failed servers
-                            self.failed_server_ports.remove(rebooted_server)
-                            print("FAILER SERVERS AFTER REBOOT", self.failed_server_ports)
-                            print("Server", rebooted_server, "has been rebooted.")
-                        # otherwise we receive an update from the server
-                        else:
-                            # receive the update from the server
-                            other_server_update = int(server_message)
-                            # update the time stamp for the tuple at the index for the corresponding port
-                            print("THIS IS THE CURRENT STATUS", self.server_comms)
+                    # once we have recieved the list of action from the leader, parse the actions list
+                    self.parse_leader_actions(server_message)
+                # we want to receive an update from the other non leader servers
+                # else:
+                #     # if we receive a server reboot update
+                #     if server_message[:13] == "server_reboot":
+                #         # remove the rebooted server from the list of failed servers
+                #         self.failed_server_ports.remove(port)
+                #         print("FAILER SERVERS AFTER REBOOT", self.failed_server_ports)
+                #         print("Server", port, "has been rebooted.")
+                #     # otherwise we receive an update from the server
+                #     else:
+                #         other_server_update = int(server_message)
+                #         print("OTHER SERVER PORT UPDATE FROM", other_server_update)
+                #         # automatically update the time stamp for the tuple at the index for the corresponding port
+                #         print("THIS IS THE CURRENT STATUS", self.server_comms)
 
-                print("Successfully received action: ", server_message)
+            # check if the leader server exists in the server_sockets connection list
+            for server_socket, port in self.other_server_sockets:
+                print("HELLOOO 2", self.other_server_sockets)
+                # decode the message we have received from a server 
+                server_message = server_socket.recv(2048).decode()
+                self.server_comms[self.ports.index(port)] = (port, datetime.datetime.now())
+                # if we receive a server reboot update
+                if server_message[:13] == "server_reboot":
+                    # get the port number of the rebooted server
+                    rebooted_server = int(server_message[13:])
+                    # remove the rebooted server from the list of failed servers
+                    self.failed_server_ports.remove(rebooted_server)
+                    print("FAILER SERVERS AFTER REBOOT", self.failed_server_ports)
+                    print("Server", rebooted_server, "has been rebooted.")
+                # otherwise we received an action item from the server
+                else:
+                    print("Received actions: " +
+                        server_message + " from " + str(port))
+                    # automatically update the time stamp for the leader in server_comms when we receive heart beat actions
+                    print("THIS IS THE UPDATE", self.server_comms[self.ports.index(self.curr_leader)])
 
-                # once we have recieved the list of action from the leader, parse the actions list
-                self.parse_leader_actions(server_message)
+                    # once we have recieved the list of action from the leader, parse the actions list
+                    self.parse_leader_actions(server_message)
+                # we want to receive an update from the other non leader servers
+                # else:
+                #     # if we receive a server reboot update
+                #     if server_message[:13] == "server_reboot":
+                #         # get the port number of the rebooted server
+                #         rebooted_server = int(server_message[13:])
+                #         # remove the rebooted server from the list of failed servers
+                #         self.failed_server_ports.remove(rebooted_server)
+                #         print("FAILER SERVERS AFTER REBOOT", self.failed_server_ports)
+                #         print("Server", rebooted_server, "has been rebooted.")
+                #     # otherwise we receive an update from the server
+                #     else:
+                #         # receive the update from the server
+                #         other_server_update = int(server_message)
+                #         # update the time stamp for the tuple at the index for the corresponding port
+                #         print("THIS IS THE CURRENT STATUS", self.server_comms)
                 
             # receive life updates from other servers if you are the leader
-            else:
-                print("I am the leader!")
-                # check if the leader server exists in the server_conns connection list
-                for server_conn, port in self.other_server_conns:
-                    # receive the update from the server
-                    server_message = server_conn.recv(2048).decode()
-                    self.server_comms[self.ports.index(port)] = (port, datetime.datetime.now())
-                    # if we receive a server reboot update
-                    if server_message[:13] == "server_reboot":
-                        # get the port number of the rebooted server
-                        rebooted_server = int(server_message[13:])
-                        # remove the rebooted server from the list of failed servers
-                        self.failed_server_ports.remove(rebooted_server)
-                        print("FAILER SERVERS AFTER REBOOT", self.failed_server_ports)
-                        print("Server", rebooted_server, "has been rebooted.")
-                    # otherwise we receive an update from the server
-                    else:
-                        # update the time stamp for the tuple at the index for the corresponding port
-                        print("THIS IS THE CURRENT STATUS", self.server_comms)
+            # else:
+            #     print("I am the leader!")
+            #     # check if the leader server exists in the server_conns connection list
+            #     for server_conn, port in self.other_server_conns:
+            #         # receive the update from the server
+            #         server_message = server_conn.recv(2048).decode()
+            #         self.server_comms[self.ports.index(port)] = (port, datetime.datetime.now())
+            #         print("THIS IS THE CURRENT STATUS", self.server_comms)
+            #         # if we receive a server reboot update
+            #         if server_message[:13] == "server_reboot":
+            #             # get the port number of the rebooted server
+            #             rebooted_server = int(server_message[13:])
+            #             # remove the rebooted server from the list of failed servers
+            #             self.failed_server_ports.remove(rebooted_server)
+            #             print("FAILER SERVERS AFTER REBOOT", self.failed_server_ports)
+            #             print("Server", rebooted_server, "has been rebooted.")
 
-                # check if the leader server exists in the server_sockets connection list
-                for server_socket, port in self.other_server_sockets:
-                    # receive the update from the server
-                    server_message = server_socket.recv(2048).decode()
-                    self.server_comms[self.ports.index(port)] = (port, datetime.datetime.now())
-                    # if we receive a server reboot update
-                    if server_message[:13] == "server_reboot":
-                        # get the port number of the rebooted server
-                        rebooted_server = int(server_message[13:])
-                        # remove the rebooted server from the list of failed servers
-                        self.failed_server_ports.remove(rebooted_server)
-                        print("FAILER SERVERS AFTER REBOOT", self.failed_server_ports)
-                        print("Server", rebooted_server, "has been rebooted.")
-                    # otherwise we receive an update from the server
-                    else:
-                        # update the time stamp for the tuple at the index for the corresponding port
-                        print("THIS IS THE CURRENT STATUS", self.server_comms)
+            #     # check if the leader server exists in the server_sockets connection list
+            #     for server_socket, port in self.other_server_sockets:
+            #         # receive the update from the server
+            #         server_message = server_socket.recv(2048).decode()
+            #         self.server_comms[self.ports.index(port)] = (port, datetime.datetime.now())
+            #         print("THIS IS THE CURRENT STATUS", self.server_comms)
+            #         # if we receive a server reboot update
+            #         if server_message[:13] == "server_reboot":
+            #             # get the port number of the rebooted server
+            #             rebooted_server = int(server_message[13:])
+            #             # remove the rebooted server from the list of failed servers
+            #             self.failed_server_ports.remove(rebooted_server)
+            #             print("FAILER SERVERS AFTER REBOOT", self.failed_server_ports)
+            #             print("Server", rebooted_server, "has been rebooted.")
 
 
     # function to handle parsing and saving the client login action
@@ -1255,7 +1231,19 @@ class Server:
         self.heartbeat.cancel()
         print("This server has failed")
         # make the server sleep for five seconds to simulate server failure
-        time.sleep(5.0)
+        begin_time = datetime.datetime.now()
+
+        while datetime.datetime.now() < begin_time + datetime.timedelta(seconds=5):
+            # decode messages
+            for server_conn, port in self.other_server_conns:
+                print("RECEIVING BUT NOT DECODING", self.other_server_conns)
+                # if we found the leader server connection, decode from the leader
+                server_conn.recv(2048).decode()
+            for server_socket, port in self.other_server_sockets:
+                print("RECEIVING BUT NOT DECODING", self.other_server_sockets)
+                # if we found the leader server connection, decode from the leader
+                server_socket.recv(2048).decode()
+
         # once the sleep time has stopped, we can reboot the server
         self.reboot_server()
 
@@ -1270,9 +1258,9 @@ class Server:
         # reboot the server to start sending heartbeat actions again
         self.send_server_reboot_message()
         self.reset_server_comms()
-        time.sleep(0.5)
+        # time.sleep(0.1)
         print("Successfully rebooted this server...")
-        self.run_server_program()
+        self.start_heartbeat()
 
 
     # function to tell the other servers that this server has been rebooted
@@ -1285,20 +1273,25 @@ class Server:
         # send life update to each of the other servers in the conn connections
         for other_server_conn, other_server_port in self.other_server_conns:
             # check that each server is not in the list of failed servers
-            if other_server_port not in self.failed_server_ports:
-                # send over a life update
-                other_server_conn.sendto(
-                    reboot_message.encode(), (self.host, other_server_port))
-                print("Sent server reboot update to " + str(other_server_port))
+            # if other_server_port not in self.failed_server_ports:
+            # send over a life update
+            other_server_conn.sendto(
+                reboot_message.encode(), (self.host, other_server_port))
+            print("Sent server reboot update to " + str(other_server_port))
 
         # send life update to each of the other servers in the server connections
         for other_server_socket, other_server_port in self.other_server_sockets:
             # check that each server is not in the list of failed servers
-            if other_server_port not in self.failed_server_ports:
-                # send over a life update
-                other_server_socket.sendto(
-                    reboot_message.encode(), (self.host, other_server_port))
-                print("Sent server reboot update to " + str(other_server_port))
+            # if other_server_port not in self.failed_server_ports:
+            # send over a life update
+            other_server_socket.sendto(
+                reboot_message.encode(), (self.host, other_server_port))
+            print("Sent server reboot update to " + str(other_server_port))
+
+    def start_heartbeat(self):
+        # set up the send heartbeat function if you are a leader and sufficient servers have connected
+        self.heartbeat = RepeatingTimer(self.heartbeat_interval, self.send_heartbeat_actions)
+        self.heartbeat.start()
 
 
     # this program sets up the server + creates new threads for clients
@@ -1318,8 +1311,7 @@ class Server:
         port = self.port
 
         # set up the send heartbeat function if you are a leader and sufficient servers have connected
-        self.heartbeat = RepeatingTimer(self.heartbeat_interval, self.send_heartbeat_actions)
-        self.heartbeat.start()
+        self.start_heartbeat()
 
         # if this server has an index which is 'allowed to fail' (system is 2 fault-tolerant
         # so we have at most 2 servers failing), then have it fail.
