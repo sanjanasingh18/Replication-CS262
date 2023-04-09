@@ -56,6 +56,9 @@ class Server:
         else:
             self.host = set_host
 
+        # keep a count of connected servers to ensure we start sending actions when all servers are connected
+        self.connected_servers_count = 0
+
         # create a variable to store the list of heartbeat actions that we will
         # send to the other servers every heart beat
         self.heartbeat_actions = []
@@ -98,9 +101,9 @@ class Server:
         # create an array to store communications from the other servers when they send life updates
         # this array will store communications in the format 
         # [(port1, timestamp), (port2, timestamp), (port3, timestamp)]
-        self.server_comms = [(self.ports[0], datetime.datetime.now()), 
-                             (self.ports[1], datetime.datetime.now()), 
-                             (self.ports[2], datetime.datetime.now())]
+        self.server_comms = [(self.ports[0], None),
+                             (self.ports[1], None),
+                             (self.ports[2], None)]
 
         # this commented line was to check that you are able to print account_list usernames
         # of different lengths
@@ -804,6 +807,7 @@ class Server:
 
     def receive_heartbeat_action(self):
         while True:
+            print("IN RECEIVE ACTIONS")
             # if server is not a leader, it recieves actions from the leader
             if not self.is_leader:
                 # create a variable to hold our actions string
@@ -822,7 +826,7 @@ class Server:
                         # leader_server_conn.sendto(
                         #     "ok".encode(), (self.host, port))
                         # receive the actions string using the length of actions string
-                        server_message += server_conn.recv(2048).decode()
+                        server_message = server_conn.recv(2048).decode()
                         # if we receive a server reboot update
                         if server_message[:13] == "server_reboot":
                             # get the port number of the rebooted server
@@ -837,9 +841,9 @@ class Server:
                                 server_message + " from " + str(port))
                             # automatically update the time stamp for the leader in server_comms when we receive heart beat actions
                             self.server_comms[self.ports.index(self.curr_leader)] = (self.curr_leader, datetime.datetime.now())
+                    # we want to receive an update from the other non leader servers
                     else:
-
-                        server_message += server_conn.recv(2048).decode()
+                        server_message = server_conn.recv(2048).decode()
                         # if we receive a server reboot update
                         if server_message[:13] == "server_reboot":
                             # get the port number of the rebooted server
@@ -871,7 +875,7 @@ class Server:
                         # leader_server_socket.sendto(
                         #     "ok".encode(), (self.host, port))
                         # receive the actions string using the length of actions string
-                        server_message += server_socket.recv(2048).decode()
+                        server_message = server_socket.recv(2048).decode()
                         print("THIS IS WHAT I GOT POST REBOOT", server_message)
                         # if we receive a server reboot update
                         if server_message[:13] == "server_reboot":
@@ -887,8 +891,9 @@ class Server:
                                 server_message + " from " + str(port))
                             # automatically update the time stamp for the leader in server_comms when we receive heart beat actions
                             self.server_comms[self.ports.index(self.curr_leader)] = (self.curr_leader, datetime.datetime.now())
+                    # we want to receive an update from the other non leader servers
                     else:
-                        server_message += server_socket.recv(2048).decode()
+                        server_message = server_socket.recv(2048).decode()
                         # if we receive a server reboot update
                         if server_message[:13] == "server_reboot":
                             # get the port number of the rebooted server
@@ -1018,6 +1023,7 @@ class Server:
         # save updated CSV with the new username
         self.df.to_csv(self.state_path, header=True, index=False)
         print("it saved? to the CSV file ??")
+
 
     # function to handle parsing and saving the logout client action
     def save_logout_action(self, server_action):
@@ -1151,6 +1157,7 @@ class Server:
 
     def server_to_server(self, conn, other_server_port):
         self.other_server_conns.append((conn, other_server_port))
+        self.ports.index(other_server_port)
         print("a server" + str(other_server_port) + "connected wowwww")
 
     # function that does the heavy lifting of server, client communication
@@ -1245,10 +1252,10 @@ class Server:
         for conn, port in self.other_server_conns:
             # find timestamp corresponding to port in self.server_comms
             for port_val, most_recent_heartbeat_time in self.server_comms:
-                if port == port_val:
+                if port == port_val and most_recent_heartbeat_time:
                     # use that timestamp to detect server failure
                     failure_bound = most_recent_heartbeat_time + datetime.timedelta(seconds=1.5)
-                    print('failure time, cur time', failure_bound, cur_time)
+                    print('failure time, cur time', failure_bound, cur_time, cur_time > failure_bound)
                     if cur_time > failure_bound:
                         # then server has failed:
                         self.failed_server_ports.add(port)
@@ -1257,10 +1264,10 @@ class Server:
         for server_socket, port in self.other_server_sockets:
             # find timestamp corresponding to port in self.server_comms
             for port_val, most_recent_heartbeat_time in self.server_comms:
-                if port == port_val:
+                if port == port_val and most_recent_heartbeat_time:
                     # use that timestamp to detect server failure
                     failure_bound = most_recent_heartbeat_time + datetime.timedelta(seconds=1.5)
-                    print('failure time, cur time', failure_bound, cur_time)
+                    print('failure time, cur time', failure_bound, cur_time, cur_time > failure_bound)
                     if cur_time > failure_bound:
                         # then server has failed:
                         self.failed_server_ports.add(port)
@@ -1285,11 +1292,17 @@ class Server:
         # once the sleep time has stopped, we can reboot the server
         self.reboot_server()
 
+    # function to reset the server communication list
+    def reset_server_comms(self):
+        for ind, (port, _) in enumerate(self.server_comms):
+            self.server_comms[ind] = (port, None)
+
     
     # function to reboot the server
     def reboot_server(self):
         # reboot the server to start sending heartbeat actions again
         self.send_server_reboot_message()
+        self.reset_server_comms()
         time.sleep(0.5)
         print("Successfully rebooted this server...")
         self.run_server_program()
@@ -1337,16 +1350,9 @@ class Server:
         host = self.host
         port = self.port
 
-        # set up the send heartbeat function if you are a leader
+        # set up the send heartbeat function if you are a leader and sufficient servers have connected
         self.heartbeat = RepeatingTimer(self.heartbeat_interval, self.send_heartbeat_actions)
         self.heartbeat.start()
-
-        # set up the receive heartbeat function if you are a follower
-        receive_heartbeat = threading.Thread(
-            target=self.receive_heartbeat_action)
-
-        # start the thread
-        receive_heartbeat.start()
 
         # if this server has an index which is 'allowed to fail' (system is 2 fault-tolerant
         # so we have at most 2 servers failing), then have it fail.
@@ -1361,9 +1367,19 @@ class Server:
             server_failure = Timer(failure_interval, self.start_server_failure)
             server_failure.start()
 
+        # set up the receive heartbeat function if you are a follower
+        receive_heartbeat = threading.Thread(
+            target=self.receive_heartbeat_action)
+
+        # start the thread
+        receive_heartbeat.start()
+
         # while True, listen!
         while True:
+
             conn, addr = self.server.accept()
+
+            self.connected_servers_count += 1
 
             print(f'{addr} connected to server.')
 
