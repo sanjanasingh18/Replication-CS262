@@ -29,6 +29,8 @@ all_server_indices = [0, 1, 2]
 # set the indices of the servers that can fail (to demo 2-fault tolerant system)
 # can alter these to be any 2 values between 0 and 2
 failure_indices = [0]
+failure_indices = [1]
+failure_interval = 10.0
 
 
 class RepeatingTimer(Timer):
@@ -78,10 +80,7 @@ class Server:
         self.heartbeat = None
 
         # create a variable to store the time interval for the heartbeat actions
-        self.heartbeat_interval = 0.5
-
-        # create a variable to store the time interval that will detect failure from
-        self.failure_alert_time = 1.5
+        self.heartbeat_interval = 2.0
 
         # have a list of failed server ports so the other servers know not to send things to them
         self.failed_server_ports = set()
@@ -812,6 +811,8 @@ class Server:
                         print("I think the leader is ", self.curr_leader)
                         # receive the actions string using the length of actions string
                         server_message = server_conn.recv(2048).decode()
+                        #self.server_comms[self.ports.index(self.curr_leader)] = (self.curr_leader, datetime.datetime.now())
+                        self.server_comms[self.ports.index(port)] = (port, datetime.datetime.now())
                         # if we receive a server reboot update
                         if server_message[:13] == "server_reboot":
                             # get the port number of the rebooted server
@@ -820,23 +821,21 @@ class Server:
                             self.failed_server_ports.remove(rebooted_server)
                             print("FAILER SERVERS AFTER REBOOT", self.failed_server_ports)
                             print("Server", rebooted_server, "has been rebooted.")
-                            self.server_comms[self.ports.index(self.curr_leader)] = (self.curr_leader, datetime.datetime.now())
                         # otherwise we received an action item from the server
                         else:
                             print("Received actions: " +
                                 server_message + " from " + str(port))
                             # automatically update the time stamp for the leader in server_comms when we receive heart beat actions
-                            self.server_comms[self.ports.index(self.curr_leader)] = (self.curr_leader, datetime.datetime.now())
                     # we want to receive an update from the other non leader servers
                     else:
                         server_message = server_conn.recv(2048).decode()
+                        self.server_comms[self.ports.index(port)] = (port, datetime.datetime.now())
                         # if we receive a server reboot update
                         if server_message[:13] == "server_reboot":
                             # get the port number of the rebooted server
                             rebooted_server = int(server_message[13:])
                             # remove the rebooted server from the list of failed servers
                             self.failed_server_ports.remove(rebooted_server)
-                            self.server_comms[self.ports.index(self.curr_leader)] = (self.curr_leader, datetime.datetime.now())
                             print("FAILER SERVERS AFTER REBOOT", self.failed_server_ports)
                             print("Server", rebooted_server, "has been rebooted.")
                         # otherwise we receive an update from the server
@@ -844,7 +843,6 @@ class Server:
                             other_server_update = int(server_message)
                             print("OTHER SERVER PORT UPDATE FROM", other_server_update)
                             # automatically update the time stamp for the tuple at the index for the corresponding port
-                            self.server_comms[self.ports.index(other_server_update)] = (other_server_update, datetime.datetime.now())
                             print("THIS IS THE CURRENT STATUS", self.server_comms)
 
                 # check if the leader server exists in the server_sockets connection list
@@ -853,17 +851,18 @@ class Server:
                     # if we found the leader server connection, decode from the leader
                     if port == self.curr_leader:
                         print("I think the leader is ", self.curr_leader)
-                        print("AAAAAAAAAHHHHH IM ST?UCK")
+                        print("Waiting for step bro...")
                         # receive the actions string using the length of actions string
                         server_message = server_socket.recv(2048).decode()
-                        print("HELP IM STUCK step bro")
+                        # self.server_comms[self.ports.index(self.curr_leader)] = (self.curr_leader, datetime.datetime.now())
+                        self.server_comms[self.ports.index(port)] = (port, datetime.datetime.now())
+                        print("step bro is hereee")
                         # if we receive a server reboot update
                         if server_message[:13] == "server_reboot":
                             # get the port number of the rebooted server
                             rebooted_server = int(server_message[13:])
                             # remove the rebooted server from the list of failed servers
                             self.failed_server_ports.remove(rebooted_server)
-                            self.server_comms[self.ports.index(self.curr_leader)] = (self.curr_leader, datetime.datetime.now())
                             print("FAILER SERVERS AFTER REBOOT", self.failed_server_ports)
                             print("Server", rebooted_server, "has been rebooted.")
                         # otherwise we received an action item from the server
@@ -871,18 +870,17 @@ class Server:
                             print("Received actions: " +
                                 server_message + " from " + str(port))
                             # automatically update the time stamp for the leader in server_comms when we receive heart beat actions
-                            self.server_comms[self.ports.index(self.curr_leader)] = (self.curr_leader, datetime.datetime.now())
-                            print("THIS OIS THE UPDATE", self.server_comms[self.ports.index(self.curr_leader)])
+                            print("THIS IS THE UPDATE", self.server_comms[self.ports.index(self.curr_leader)])
                     # we want to receive an update from the other non leader servers
                     else:
                         server_message = server_socket.recv(2048).decode()
+                        self.server_comms[self.ports.index(port)] = (port, datetime.datetime.now())
                         # if we receive a server reboot update
                         if server_message[:13] == "server_reboot":
                             # get the port number of the rebooted server
                             rebooted_server = int(server_message[13:])
                             # remove the rebooted server from the list of failed servers
                             self.failed_server_ports.remove(rebooted_server)
-                            self.server_comms[self.ports.index(self.curr_leader)] = (self.curr_leader, datetime.datetime.now())
                             print("FAILER SERVERS AFTER REBOOT", self.failed_server_ports)
                             print("Server", rebooted_server, "has been rebooted.")
                         # otherwise we receive an update from the server
@@ -890,7 +888,6 @@ class Server:
                             # receive the update from the server
                             other_server_update = int(server_message)
                             # update the time stamp for the tuple at the index for the corresponding port
-                            self.server_comms[self.ports.index(other_server_update)] = (other_server_update, datetime.datetime.now())
                             print("THIS IS THE CURRENT STATUS", self.server_comms)
 
                 print("Successfully received action: ", server_message)
@@ -905,6 +902,7 @@ class Server:
                 for server_conn, port in self.other_server_conns:
                     # receive the update from the server
                     server_message = server_conn.recv(2048).decode()
+                    self.server_comms[self.ports.index(port)] = (port, datetime.datetime.now())
                     # if we receive a server reboot update
                     if server_message[:13] == "server_reboot":
                         # get the port number of the rebooted server
@@ -916,13 +914,13 @@ class Server:
                     # otherwise we receive an update from the server
                     else:
                         # update the time stamp for the tuple at the index for the corresponding port
-                        self.server_comms[self.ports.index(int(server_message))] = (server_message, datetime.datetime.now())
                         print("THIS IS THE CURRENT STATUS", self.server_comms)
 
                 # check if the leader server exists in the server_sockets connection list
                 for server_socket, port in self.other_server_sockets:
                     # receive the update from the server
                     server_message = server_socket.recv(2048).decode()
+                    self.server_comms[self.ports.index(port)] = (port, datetime.datetime.now())
                     # if we receive a server reboot update
                     if server_message[:13] == "server_reboot":
                         # get the port number of the rebooted server
@@ -934,7 +932,6 @@ class Server:
                     # otherwise we receive an update from the server
                     else:
                         # update the time stamp for the tuple at the index for the corresponding port
-                        self.server_comms[self.ports.index(int(server_message))] = (server_message, datetime.datetime.now())
                         print("THIS IS THE CURRENT STATUS", self.server_comms)
 
 
@@ -1230,15 +1227,16 @@ class Server:
     def detect_server_failure(self):
         # TODO do this, add the logic for checking if some of the other servers have failed
         # this is pseudocode but this is the main idea
+        # self.receive_heartbeat_action()
         cur_time = datetime.datetime.now()
-
+        print("self.server_comms:", self.server_comms)
         for conn, port in self.other_server_conns:
             # find timestamp corresponding to port in self.server_comms
             for port_val, most_recent_heartbeat_time in self.server_comms:
-                print("HEAR?TBEAT COMMS???", most_recent_heartbeat_time)
+                print("HEAR?TBEAT COMMS???", most_recent_heartbeat_time, port_val)
                 if port == port_val and most_recent_heartbeat_time:
                     # use that timestamp to detect server failure
-                    failure_bound = most_recent_heartbeat_time + datetime.timedelta(seconds=1.5)
+                    failure_bound = most_recent_heartbeat_time + datetime.timedelta(seconds=3)
                     print('failure time, cur time', failure_bound, cur_time, cur_time > failure_bound)
                     if cur_time > failure_bound:
                         # then server has failed:
@@ -1248,10 +1246,10 @@ class Server:
         for server_socket, port in self.other_server_sockets:
             # find timestamp corresponding to port in self.server_comms
             for port_val, most_recent_heartbeat_time in self.server_comms:
-                print("HEAR?TBEAT COMMS???", most_recent_heartbeat_time)
+                print("HEAR?TBEAT COMMS???", most_recent_heartbeat_time, port_val)
                 if port == port_val and most_recent_heartbeat_time:
                     # use that timestamp to detect server failure
-                    failure_bound = most_recent_heartbeat_time + datetime.timedelta(seconds=1.5)
+                    failure_bound = most_recent_heartbeat_time + datetime.timedelta(seconds=3)
                     print('failure time, cur time', failure_bound, cur_time, cur_time > failure_bound)
                     if cur_time > failure_bound:
                         # then server has failed:
@@ -1344,7 +1342,6 @@ class Server:
         index_of_self = self.ports.index(self.port)
         if index_of_self in failure_indices:
             # failure_interval = self.heartbeat_interval * random.uniform(1.0, 15.0)
-            failure_interval = 7.0
             print("This Server will fail in " + str(failure_interval) + " seconds.")
 
             # set up the failure function to make the server stop responding to mimic failure
