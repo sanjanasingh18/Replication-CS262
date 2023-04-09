@@ -326,11 +326,14 @@ class ClientSocket:
 
 
   def check_server_leader(self, message):
+    print("I think the leader is", self.leader_server_port)
     # check if the server is telling us that we have a new leader
     if message[:9] == "nEwLeAdEr":
       # get the port and port index of the new leader and
       # set the client to communicate to the new server
+      print("Updating the leader...")
       self.updateLeaderServer(int(message[9:]))
+      print("I think the new leader is", self.leader_server_port)
 
       # return True if we have elected a new leader
       return True
@@ -430,9 +433,14 @@ class ClientSocket:
 
     for ind, port in enumerate(self.ports):
       # connect to each of the servers
+      print("curr port", port)
       self.client_sockets[ind].connect((host, port))
       # tell all the servers that we are a client
       self.client_sockets[ind].sendto("client".encode(), (host, port))
+      # will receive back who the curr leader is
+      curr_leader_str = self.client_sockets[ind].recv(1024).decode()
+      self.updateLeaderServer(int(curr_leader_str[10:]))
+      print(port,  "done!", curr_leader_str)
 
     # handle initial information flow- either will login or create a new account
     # You need to either log in or create an account first

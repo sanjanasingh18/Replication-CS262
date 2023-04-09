@@ -28,8 +28,8 @@ servers = []
 all_server_indices = [0, 1, 2]
 # set the indices of the servers that can fail (to demo 2-fault tolerant system)
 # can alter these to be any 2 values between 0 and 2
-failure_indices = [0, 1]
-failure_interval = 5.0
+failure_indices = []
+failure_interval = 25.0
 failure_detection_time = 7.0
 failmsg = "mandown:("
 
@@ -71,6 +71,9 @@ class Server:
         # create a variable to store the sockets to the other servers that this server will connect to
         # [8883, 8882, 8881]
         self.other_server_sockets = []
+
+        # create a variable to store the conns of the clients that connect to this server
+        self.client_conns = []
 
         # create a variable to hold the heart beat actions
         self.heartbeat = None
@@ -673,14 +676,14 @@ class Server:
 
     # function handle different cases when a client connects to the server versus when
     # another server connects to the server
-
     def server_reroute(self, host, conn, port):
         # receive information from the connection
         data = conn.recv(1024).decode()
-
+        print("Received from server_reroute function", data)
         # if the connection is a server, the data will be sent in the format
         # `{port} + server`
         if data[4:10] == 'server':
+            print("Going to server function")
             # the data is sent in the form `{port} + server + `
             # this information gives us the port address, tells us whether it's a server or a client
             # and tells us if it is a leader or not
@@ -695,18 +698,17 @@ class Server:
             self.server_to_server(conn, server_port)
         else:
             # run the server to client handling function
+            print("Going to client function")
             self.server_to_client(host, conn, port)
 
     # function to save the current state of the client action to a list of actions to
     # send out every heart beat
-
     def save_client_action(self, action):
         if self.curr_leader == self.port: #self.is_leader:
             # a hearbeat action will be saved in the format
             self.heartbeat_actions.append(action.exportAction())
 
     # function to generate an actions string from the current action list
-
     def generate_server_actions_string(self):
         # create a string to hold all the actions so we can send it
         actions_string = ''
@@ -724,7 +726,6 @@ class Server:
         return actions_string
 
     # function to send the heart beat actions to the other connected servers
-
     def send_heartbeat_actions(self):
         # get the list of server heart beat actions
         actions = self.generate_server_actions_string()
@@ -796,10 +797,9 @@ class Server:
                 print("Sent life update to " + str(other_server_port))
 
     # function for non leader servers to receive actions from leader and process the actions
-
     def receive_heartbeat_action(self):
         while True:
-            print("In receive heartbeat")
+            # print("In receive heartbeat")
             # receive for each of the servers in the conns list
             for server_conn, port in self.other_server_conns:
                 #print("predecode from", port, self.server_comms)
@@ -825,7 +825,8 @@ class Server:
                     print("FAILER SERVERS AFTER REBOOT", self.failed_server_ports)
                     print("Server", port, "has been rebooted.")
                 # otherwise we received an action item from the server
-                else:
+                elif server_message != "":
+                # else 
                     self.server_comms[self.ports.index(port)] = (port, datetime.datetime.now())
                     #print("post conn update", port, self.server_comms)
 
@@ -862,7 +863,8 @@ class Server:
                     print("Failed servers are", self.failed_server_ports)
                     print("Server", port, "has been rebooted.")
                 # otherwise we received an action item from the server
-                else:
+                # else:
+                elif server_message != "":
                     self.server_comms[self.ports.index(port)] = (port, datetime.datetime.now())
                     #print("post conn update", port, self.server_comms)
                     
@@ -875,7 +877,6 @@ class Server:
                     self.parse_leader_actions(server_message)
 
     # function to handle parsing and saving the client login action
-
     def save_login_action(self, server_action):
         # get the username of the client that logged in
         username = server_action[1]
@@ -902,7 +903,6 @@ class Server:
         print("Succesfully updated login status to logged in")
 
     # function to handle parsing and saving the create client action
-
     def save_create_action(self, server_action):
         if server_action[1]:
             # get the username for the new client
@@ -989,7 +989,6 @@ class Server:
         print("successfully deleted client account:", username)
 
     # function to handle parsing and saving the send message to another user client action
-
     def save_sendmsg_action(self, server_action):
         # get the username of the recipient
         recipient_username = server_action[4]
@@ -1016,7 +1015,6 @@ class Server:
         self.df.to_csv(self.state_path, header=True, index=False)
 
     # function to handle parsing and saving the get messages client action
-
     def save_msgspls_action(self, server_action):
         # get the username of the client
         client_username = server_action[1]
@@ -1040,7 +1038,6 @@ class Server:
         self.df.to_csv(self.state_path, header=True, index=False)
 
     # function to parse the list of actions we receive from the leader server
-
     def parse_leader_actions(self, actions):
         action_log = actions.split("we_love_cs262")
         # [[create], [create, username], [create, username, password], [exit]]
@@ -1073,15 +1070,24 @@ class Server:
             elif server_action[0] == "logout":
                 self.save_logout_action(server_action)
 
-    # function to handle server to server communications and
-
+    # function to handle server to server communications 
     def server_to_server(self, conn, other_server_port):
         self.other_server_conns.append((conn, other_server_port))
         self.ports.index(other_server_port)
-        print("a server" + str(other_server_port) + "connected wowwww")
+        print("Server" + str(other_server_port) + "connected (wowww!)")
 
     # function that does the heavy lifting of server, client communication
     def server_to_client(self, host, conn, port):
+        
+        self.client_conns.append((conn, port))
+
+        print("Client connected, sending leader rn...")
+
+        # send to client who the curr_leader is 
+        curr_leader_str = "CurrLeader" + str(self.curr_leader)
+        conn.sendto(curr_leader_str.encode(), (host, port))
+
+        print("Sent to client!")
 
         # keep track of the current client on this thread
         curr_user = ''
@@ -1164,7 +1170,7 @@ class Server:
 
     # function to detect server failure based on timestamps
     def detect_server_failure(self):
-        # additional case if you are the leader who has failed
+        # first check if the leader has failed, then update failure list
         if self.curr_leader in self.failed_server_ports:
             print("Electing a new leader...")
             self.elect_new_server_leader()
@@ -1205,6 +1211,15 @@ class Server:
             # conclude that the third server must be functioning- a 2F tolerant system
             else: 
                 self.curr_leader = self.ports[2]
+
+        # if you are the new server leader, inform all clients!
+        if self.curr_leader == self.port:
+            message = "nEwLeAdEr" + str(self.port)
+            for client_conn, client_port in self.client_conns:
+                client_conn.sendto(
+                    message.encode(), (self.host, client_port))
+                
+
         print("!! Introducing the new server...", self.curr_leader)
 
         # send message to other servers- if you are the leader vs if you aren't
