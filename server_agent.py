@@ -1369,9 +1369,8 @@ class Server:
             print(f'{addr} connected to server.')
 
             # Start a new thread with this client
-            curr_thread = threading.Thread(
-                target=self.server_reroute, args=(host, conn, port))
-s
+            curr_thread = threading.Thread(target=self.server_reroute, args=(host, conn, port))
+            
             curr_thread.start()
 
 
