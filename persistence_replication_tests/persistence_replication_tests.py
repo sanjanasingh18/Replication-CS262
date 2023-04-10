@@ -263,20 +263,140 @@ class TestServerReplication(unittest.TestCase):
         self.server_instance2.initialize_server()
         self.server_instance3.initialize_server()
 
+
     # teardown function for the tests
     def tearDown(self):
         print("Shutting down ...")
 
-    # def test_server_persistence(self):
 
-    #     success_message = "Server restored."
+    """ Functions to test server persistence """
 
-    #     csv_file_path = "server_test_persistence.csv"
-    #     test_dataframe = pd.read_csv(csv_file_path)
+    # testing if server successfully reads the CSV file into the dataframe
+    def test_server_persistence(self):
+        # store the parse csv file confirmation message 
+        confirmation = "successfully_parsed"
 
-    #     parse_confirmation = self.server_instance1.parse_csv_file(test_dataframe)
+        # get the CSV file we want to restore from
+        csv_file_path = "server_test_persistence.csv"
 
-    #     self.assertEqual(parse_confirmation, success_message)
+        # read the CSV file into the dataframe
+        test_dataframe = pd.read_csv(csv_file_path)
+
+        # get the parse confirmation after server has processed the dataframe
+        parse_confirmation = self.server_instance1.parse_process_dataframe(test_dataframe)
+
+        self.assertEqual(parse_confirmation[:19], confirmation)
+
+
+    # testing if a previous client username is still stored in the server
+    # after the dataframe has been read 
+    def test_server_persistence_client_username_valid(self):
+        # create a test username to check for that exists in the CSV file
+        test_username = "a9a00d81-1db4-42ac-bcf1-a05c0000447e"
+
+        # get the CSV file we want to restore from
+        csv_file_path = "server_test_persistence.csv"
+
+        # read the CSV file into the dataframe
+        test_dataframe = pd.read_csv(csv_file_path)
+
+        # get the parse confirmation after server has processed the dataframe
+        self.server_instance1.parse_process_dataframe(test_dataframe)
+
+        # check if the username exists in our server after parsing
+        username_exists = self.server_instance1.is_username_valid(test_username)
+
+        self.assertEqual(username_exists, True)
+
+
+    # testing if a nonexistent client username exists in the server
+    # after the dataframe has been read 
+    def test_server_persistence_client_username_not_valid(self):
+        # create a test username to check for that exists in the CSV file
+        test_username = "some-bogus-username-that-doesnt-exist"
+
+        # get the CSV file we want to restore from
+        csv_file_path = "server_test_persistence.csv"
+
+        # read the CSV file into the dataframe
+        test_dataframe = pd.read_csv(csv_file_path)
+
+        # parse the CSV file and populate the dataframe on the server
+        self.server_instance1.parse_process_dataframe(test_dataframe)
+
+        # check if the username exists in our server after parsing
+        username_exists = self.server_instance1.is_username_valid(test_username)
+
+        self.assertEqual(username_exists, False)
+
+
+    # testing if a nonexistent client username exists in the dataframe
+    # after the CSV file has been read 
+    def test_server_persistence_client_username_in_dataframe(self):
+        # create a test username to check for that exists in the CSV file
+        test_username = "a9a00d81-1db4-42ac-bcf1-a05c0000447e"
+
+        # get the CSV file we want to restore from
+        csv_file_path = "server_test_persistence.csv"
+
+        # read the CSV file into the dataframe
+        test_dataframe = pd.read_csv(csv_file_path)
+
+        # parse the CSV file and populate the dataframe on the server
+        self.server_instance1.parse_process_dataframe(test_dataframe)
+
+        # check if the username exists in our server after parsing
+        username_index = self.server_instance1.get_username_index(test_username)
+
+        self.assertEqual(username_index, 1)
+
+
+    # # testing if the client's password is still in the dataframe after it is read
+    def test_server_persistence_client_password_in_dataframe(self):
+        # create a test username to check for that exists in the CSV file
+        test_username = "38fb6019-8e96-423c-8b90-1eeaefa50173"
+
+        # create a variable to hold the first test messages
+        test_password = "heyoo"
+
+        # get the CSV file we want to restore from
+        csv_file_path = "server_test_persistence.csv"
+
+        # read the CSV file into the dataframe
+        test_dataframe = pd.read_csv(csv_file_path)
+
+        # parse the CSV file and populate the dataframe on the server
+        self.server_instance1.parse_process_dataframe(test_dataframe)
+
+        # check if the username exists in our server after parsing
+        username_password = self.server_instance1.get_username_password(test_username)
+
+        self.assertEqual(username_password, test_password)
+
+
+    # testing if client's available messages are in the dataframe after
+    # the CSV file has been parsed
+    def test_server_persistence_client_messages_in_dataframe(self):
+        # create a test username to check for that exists in the CSV file
+        test_username = "12d8719c-6e5b-4538-a92f-80bf4215d34d"
+
+        # create a variable to hold the first test messages
+        test_message = "'8291d793-0551-48f4-a39d-7a9f3e191094hiohrgiwogh'"
+
+        # get the CSV file we want to restore from
+        csv_file_path = "server_test_persistence.csv"
+
+        # read the CSV file into the dataframe
+        test_dataframe = pd.read_csv(csv_file_path)
+
+        # parse the CSV file and populate the dataframe on the server
+        self.server_instance1.parse_process_dataframe(test_dataframe)
+
+        # check if the username exists in our server after parsing
+        username_messages = self.server_instance1.get_username_messages(test_username)
+
+        self.assertEqual(username_messages[0], test_message)
+
 
     """ Functions to test server replication """
 

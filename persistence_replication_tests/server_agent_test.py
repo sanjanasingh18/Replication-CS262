@@ -166,89 +166,57 @@ class Server:
 
         return correct_hash
 
+    # function to parse a CSV file into a dataframe, then process df
+    def parse_process_dataframe(self, dataframe):
+        self.df = dataframe
+        time_last_updated = self.parse_csv_file()
+        return "successfully_parsed" + time_last_updated
+
     # Function to parse the server data state csv file and add to account_list
 
-    def parse_csv_file(self, dataframe=""):
+    def parse_csv_file(self):
         # Account list is a dictionary [UUID: ClientObject]
         # for row in csv,
         # make client socket object using attributes
         # add to dictionary!
-        if dataframe == "":
-            # lock mutex
-            self.account_list_lock.acquire()
+        # lock mutex
+        self.account_list_lock.acquire()
 
-            for index, row in self.df.iterrows():
-                # create the messages data structure as a list
-                messages = []
-                processed_messages = row["Messages"].strip('][').split(', ')
+        for index, row in self.df.iterrows():
+            # create the messages data structure as a list
+            messages = []
+            processed_messages = row["Messages"].strip('][').split(', ')
 
-                # add each message to the messages list
-                if processed_messages != ['']:
-                    for message in processed_messages:
-                        messages.append(message)
+            # add each message to the messages list
+            if processed_messages != ['']:
+                for message in processed_messages:
+                    messages.append(message)
 
-                # create a new client socket for each client that needs to be restored
-                client_socket = ClientSocket()
-                # update the username value in the client socket
-                client_socket.setUsername(row["Username"])
-                # update the password value for the client socket
-                client_socket.setPassword(row["Password"])
-                # update the logged in status for the client socket
-                client_socket.setLoggedIn(row["Logged_in"])
-                # update the messages value for the client socket
-                client_socket.setMessages(messages)
+            # create a new client socket for each client that needs to be restored
+            client_socket = ClientSocket()
+            # update the username value in the client socket
+            client_socket.setUsername(row["Username"])
+            # update the password value for the client socket
+            client_socket.setPassword(row["Password"])
+            # update the logged in status for the client socket
+            client_socket.setLoggedIn(row["Logged_in"])
+            # update the messages value for the client socket
+            client_socket.setMessages(messages)
 
-                # update messages in Dataframe to be stored correctly
-                self.df.at[index, "Messages"] = messages
+            # update messages in Dataframe to be stored correctly
+            self.df.at[index, "Messages"] = messages
 
-                self.account_list[row["Username"]] = client_socket
+            self.account_list[row["Username"]] = client_socket
 
-            # create a variable to store the timestamp the CSV file was last updated so we can return it
-            csv_timestamp = self.df["Timestamp_last_updated"].values[0]
+        # create a variable to store the timestamp the CSV file was last updated so we can return it
+        csv_timestamp = self.df["Timestamp_last_updated"].values[0]
 
-            # unlock mutex
-            self.account_list_lock.release()
+        # unlock mutex
+        self.account_list_lock.release()
 
-            # return the time this server state was last updated so we can print it
-            return csv_timestamp
-        else:
-
-            self.account_list_lock.acquire()
-
-            for index, row in dataframe.iterrows():
-                # create the messages data structure as a list
-                messages = []
-                processed_messages = row["Messages"].strip('][').split(', ')
-
-                # add each message to the messages list
-                if processed_messages != ['']:
-                    for message in processed_messages:
-                        messages.append(message)
-
-                # create a new client socket for each client that needs to be restored
-                client_socket = ClientSocket()
-                # update the username value in the client socket
-                client_socket.setUsername(row["Username"])
-                # update the password value for the client socket
-                client_socket.setPassword(row["Password"])
-                # update the logged in status for the client socket
-                client_socket.setLoggedIn(row["Logged_in"])
-                # update the messages value for the client socket
-                client_socket.setMessages(messages)
-
-                # update messages in Dataframe to be stored correctly
-                dataframe.at[index, "Messages"] = messages
-
-                self.account_list[row["Username"]] = client_socket
-
-            # create a variable to store the timestamp the CSV file was last updated so we can return it
-            csv_timestamp = dataframe["Timestamp_last_updated"].values[0]
-
-            # unlock mutex
-            self.account_list_lock.release()
-
-            # return the time this server state was last updated so we can print it
-            return "Server restored."
+        # return the time this server state was last updated so we can print it
+        return csv_timestamp
+    
 
     # Function to parse the server data state csv file when a new server leader is elected
     def update_new_leader_data(self):
@@ -307,7 +275,24 @@ class Server:
         # unlock mutex
         self.account_list_lock.release()
         return result
-
+    
+    # function to get the client's username index
+    def get_username_index(self, client_username):
+        return self.df.index[self.df["Username"] == client_username].tolist()[0]
+    
+    # function to get the client's password
+    def get_username_password(self, client_username):
+        return self.account_list.get(client_username.strip()).getPassword()
+    
+    
+    # function to get the client's available messages
+    def get_username_messages(self, client_username):
+        # set the current_messages variable to be equal to the messages stored in the client socket
+        current_messages = self.account_list.get(
+            client_username).getMessages()
+        
+        return current_messages
+    
     # Function to add the message to the recipient's queue
 
     def add_message_to_queue(self, sender_username, recipient_username, message):
