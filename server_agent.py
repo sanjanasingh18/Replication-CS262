@@ -811,9 +811,7 @@ class Server:
                 # check if server down
                 if failmsg in server_message:
                     # do not update server_comms
-                    print("ManDown", port)
-                    # TODO- I added then deleted this line bc we only should do this bt time
-                    #self.failed_server_ports.add(port)
+                    print("ServerComm", port)
 
                 # if we receive a server reboot update
                 elif server_message[:13] == "server_reboot":
@@ -848,9 +846,7 @@ class Server:
                 # check if server down
                 if failmsg in server_message:
                     # do not update server_comms
-                    print("ManDown", port)
-                    # TODO- I added then deleted this line bc we only should do this bt time
-                    #self.failed_server_ports.add(port)
+                    print("ServerComm", port)
 
                 # if we receive a server reboot update
                 elif server_message[:13] == "server_reboot":
@@ -1212,15 +1208,6 @@ class Server:
             else: 
                 self.curr_leader = self.ports[2]
 
-        # TODO talk about this- it might make it easier on the client side :-)
-
-        # # if you are the new server leader, inform all clients!
-        # if self.curr_leader == self.port:
-        #     message = "nEwLeAdEr" + str(self.port)
-        #     for client_conn, client_port in self.client_conns:
-        #         client_conn.sendto(
-        #             message.encode(), (self.host, client_port))
-
         # if you there is a new server leader, inform all clients!
         message = "nEwLeAdEr" + str(self.curr_leader)
         for client_conn, client_port in self.client_conns:
@@ -1230,9 +1217,6 @@ class Server:
 
         print("!! Introducing the new server...", self.curr_leader)
 
-        # send message to other servers- if you are the leader vs if you aren't
-        # TODO tbd if we add bc we currently have consensus on who fails
-        # if self.port == self.cur_leader:
             
 
 
@@ -1248,21 +1232,7 @@ class Server:
         # make the server sleep for five seconds to simulate server failure
         begin_time = datetime.datetime.now()
         print("This server has failed at", begin_time)
-        # COMMENTSS- TODO look at this 
-        # do we just this be a 15 second sleep? other threads continue but 
-        # it sends diff messages so its comms time isnt updated
         time.sleep(20)
-        #while datetime.datetime.now() < begin_time + datetime.timedelta(seconds=15):
-            #continue
-            # decode messages
-            #for server_conn, port in self.other_server_conns:
-                # print("RECEIVING BUT NOT DECODING", self.other_server_conns)
-                # if we found the leader server connection, decode from the leader
-                #server_conn.recv(2048).decode()
-            #for server_socket, port in self.other_server_sockets:
-                # print("RECEIVING BUT NOT DECODING", self.other_server_sockets)
-                # if we found the leader server connection, decode from the leader
-                #server_socket.recv(2048).decode()
 
         # once the sleep time has stopped, we can reboot the server
         self.reboot_server()
