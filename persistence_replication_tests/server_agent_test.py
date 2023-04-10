@@ -17,7 +17,7 @@ from _thread import *
 from collections import Counter
 import threading
 from threading import Timer
-from run_client import ClientSocket
+from run_client_test import ClientSocket
 from action import ClientAction
 
 # create a global variable for our csv backup state file
@@ -30,7 +30,7 @@ all_server_indices = [0, 1, 2]
 # set the indices of the servers that can fail (to demo 2-fault tolerant system)
 # can alter these to be any 2 values between 0 and 2
 failure_indices = [0]
-failure_interval = 25.0
+failure_interval = 5.0
 failure_detection_time = 7.0
 server_comm_message = "server_comm_message"
 sophia_host = "dhcp-10-250-69-244.harvard.edu"
@@ -155,62 +155,100 @@ class Server:
 
     # Function to compare the hashes for each server
 
-    def compare_server_hash(self, filepaths):
+    def compare_server_hash(self, file_hashes):
         hashes = []
-        for filepath in filepaths:
-            hashes.append(self.hash_server_file(filepath))
+        for hash in file_hashes:
+            hashes.append(hash)
         # check if any values are equal to 3+ values for the consensus
         # servers and save that hash in a variable
         data = Counter(hashes)
         correct_hash = data.most_common(1)[0][0]
 
-        return np.where(np.array(hashes) == correct_hash)
+        return correct_hash
 
     # Function to parse the server data state csv file and add to account_list
 
-    def parse_csv_file(self):
+    def parse_csv_file(self, dataframe=""):
         # Account list is a dictionary [UUID: ClientObject]
         # for row in csv,
         # make client socket object using attributes
         # add to dictionary!
+        if dataframe == "":
+            # lock mutex
+            self.account_list_lock.acquire()
 
-        # lock mutex
-        self.account_list_lock.acquire()
+            for index, row in self.df.iterrows():
+                # create the messages data structure as a list
+                messages = []
+                processed_messages = row["Messages"].strip('][').split(', ')
 
-        for index, row in self.df.iterrows():
-            # create the messages data structure as a list
-            messages = []
-            processed_messages = row["Messages"].strip('][').split(', ')
+                # add each message to the messages list
+                if processed_messages != ['']:
+                    for message in processed_messages:
+                        messages.append(message)
 
-            # add each message to the messages list
-            if processed_messages != ['']:
-                for message in processed_messages:
-                    messages.append(message)
+                # create a new client socket for each client that needs to be restored
+                client_socket = ClientSocket()
+                # update the username value in the client socket
+                client_socket.setUsername(row["Username"])
+                # update the password value for the client socket
+                client_socket.setPassword(row["Password"])
+                # update the logged in status for the client socket
+                client_socket.setLoggedIn(row["Logged_in"])
+                # update the messages value for the client socket
+                client_socket.setMessages(messages)
 
-            # create a new client socket for each client that needs to be restored
-            client_socket = ClientSocket()
-            # update the username value in the client socket
-            client_socket.setUsername(row["Username"])
-            # update the password value for the client socket
-            client_socket.setPassword(row["Password"])
-            # update the logged in status for the client socket
-            client_socket.setLoggedIn(row["Logged_in"])
-            # update the messages value for the client socket
-            client_socket.setMessages(messages)
+                # update messages in Dataframe to be stored correctly
+                self.df.at[index, "Messages"] = messages
 
-            # update messages in Dataframe to be stored correctly
-            self.df.at[index, "Messages"] = messages
+                self.account_list[row["Username"]] = client_socket
 
-            self.account_list[row["Username"]] = client_socket
+            # create a variable to store the timestamp the CSV file was last updated so we can return it
+            csv_timestamp = self.df["Timestamp_last_updated"].values[0]
 
-        # create a variable to store the timestamp the CSV file was last updated so we can return it
-        csv_timestamp = self.df["Timestamp_last_updated"].values[0]
+            # unlock mutex
+            self.account_list_lock.release()
 
-        # unlock mutex
-        self.account_list_lock.release()
+            # return the time this server state was last updated so we can print it
+            return csv_timestamp
+        else:
 
-        # return the time this server state was last updated so we can print it
-        return csv_timestamp
+            self.account_list_lock.acquire()
+
+            for index, row in dataframe.iterrows():
+                # create the messages data structure as a list
+                messages = []
+                processed_messages = row["Messages"].strip('][').split(', ')
+
+                # add each message to the messages list
+                if processed_messages != ['']:
+                    for message in processed_messages:
+                        messages.append(message)
+
+                # create a new client socket for each client that needs to be restored
+                client_socket = ClientSocket()
+                # update the username value in the client socket
+                client_socket.setUsername(row["Username"])
+                # update the password value for the client socket
+                client_socket.setPassword(row["Password"])
+                # update the logged in status for the client socket
+                client_socket.setLoggedIn(row["Logged_in"])
+                # update the messages value for the client socket
+                client_socket.setMessages(messages)
+
+                # update messages in Dataframe to be stored correctly
+                dataframe.at[index, "Messages"] = messages
+
+                self.account_list[row["Username"]] = client_socket
+
+            # create a variable to store the timestamp the CSV file was last updated so we can return it
+            csv_timestamp = dataframe["Timestamp_last_updated"].values[0]
+
+            # unlock mutex
+            self.account_list_lock.release()
+
+            # return the time this server state was last updated so we can print it
+            return "Server restored."
 
     # Function to parse the server data state csv file when a new server leader is elected
     def update_new_leader_data(self):
