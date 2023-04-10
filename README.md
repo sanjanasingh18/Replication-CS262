@@ -1,32 +1,55 @@
 # Replication-CS262
 Assignment 3 for CS262
 
-To run the the wire version go into the socket_workable folder and run python3 run_server.py in one terminal and run python3 run_client.py in another terminal to create a client.
+Starting the application
+--------------------------
+Open three terminals, go into the folder where the `server_agent.py` file is located, and run three instances of the server: 
+In the first termainl run 
+```
+$ python3 server_agent.py 8881 True
+```
+Then, in the second terminal run 
+```
+$ python3 server_agent.py 8882 False
+```
+Then run 
+```
+$ python3 server_agent.py 8883 False
+```` 
+in the third terminal
 
-To run socket tests go into socket_with_tests and run python3 test_client.py. 
+To connect a client to one of the servers, open a new terminal and run the following:
+```
+$ python3 run_client.py
+```
+to get a client connected. 
 
-How to set up the Chat System (1 server, mutliple clients):
-
-Setting up the non-GRPC server-client chat application:
-
-Versions + Packages necessary - We use Python 3.7+, the socket, time, uuid, _thread, and threading packages.
-To have multiple clients ALL on the same computer as the server, set your host as follows:
-
-Line 8 on run_client.py: set_host = ''
-
-Line 11 on run_server.py: set_host = ''
-
+Running the application on different devices
+--------------------------
 To have clients on different computers as the server, carry out the following steps:
 
-Run the following code:
+Run the following code in your terminal:
 
-import socket print(socket.gethostname()) hostName = socket.gethostname()
+```
+$ import socket print(socket.gethostname()) hostName = socket.gethostname()
+```
 
 This will give you the host name to connect between computers. Ensure that computers are connected to the same WiFi network.
 
-Line 8 on run_client.py: set_host = hostName
+Update these lines in the code files:
 
-Line 11 on run_server.py: set_host = hostName
+Line 12 on `run_client.py`: `set_host = hostName`
+
+Line 36 on `run_server.py`: `sophia_host = hostName`
+
+Running tests
+--------------------------
+Go into the `persistence_replication_tests` folder.
+In a new terminal, run 
+```
+python3 persistence_replication_tests.py
+```
+Other files in this folder are used purely for testing purposes - please do not edit those. 
 
 Common issues:
 
