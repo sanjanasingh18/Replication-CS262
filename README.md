@@ -45,9 +45,10 @@ Line 36 on `run_server.py`: `sophia_host = hostName`
 Running tests
 --------------------------
 Go into the `persistence_replication_tests` folder.
+
 In a new terminal, run 
 ```
-python3 persistence_replication_tests.py
+$ python3 persistence_replication_tests.py
 ```
 Other files in this folder are used purely for testing purposes - please do not edit those. 
 
