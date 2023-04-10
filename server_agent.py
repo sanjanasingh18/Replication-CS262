@@ -29,7 +29,7 @@ all_server_indices = [0, 1, 2]
 # set the indices of the servers that can fail (to demo 2-fault tolerant system)
 # can alter these to be any 2 values between 0 and 2
 failure_indices = [0]
-failure_interval = 35.0
+failure_interval = 25.0
 failure_detection_time = 7.0
 failmsg = "mandown:("
 
@@ -1248,6 +1248,7 @@ class Server:
     # function to elect a new server leader
     def elect_new_server_leader(self):
         # if our current leader server has failed, want to carry out election
+        # past_leader = self.curr_leader
         if self.curr_leader in self.failed_server_ports:
             # elect a new leader server- do it by the lowest port # 
             # possible- smallest port not failed
@@ -1264,11 +1265,11 @@ class Server:
             # parse the csv file
             self.update_new_leader_data()
             time.sleep(0.2)
-        # if you there is a new server leader, inform all clients!
-        message = "nEwLeAdEr" + str(self.curr_leader)
-        for client_conn, client_port in self.client_conns:
-            client_conn.sendto(
-                message.encode(), (self.host, client_port))
+            # if you there is a new server leader, inform all clients!
+            message = "nEwLeAdEr" + str(self.curr_leader)
+            for client_conn, client_port in self.client_conns:
+                client_conn.sendto(
+                    message.encode(), (self.host, client_port))
                 
         print("!! Introducing the new server...", self.curr_leader)
 

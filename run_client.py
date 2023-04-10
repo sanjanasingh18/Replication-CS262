@@ -345,9 +345,10 @@ class ClientSocket:
         print("I think the leader is", proposed_leader_port)
 
         data = self.client.recv(1024).decode()
-        while data[:9] != "nEwLeAdEr":
-          data = self.client.recv(1024).decode()
-        print("THIS IS THE DATA", data)
+        print('first data', data)
+        # while data[:9] != "nEwLeAdEr":
+        #   data = self.client.recv(1024).decode()
+        #   print("THIS IS THE DATA", data)
         # return True if we have elected a new leader
         return True
     
