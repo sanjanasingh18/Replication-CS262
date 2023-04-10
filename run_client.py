@@ -9,7 +9,7 @@ import threading
 from threading import Timer
 
 set_port = 8881
-set_host = ''
+set_host = "dhcp-10-250-69-244.harvard.edu"
 # set_host = 'dhcp-10-250-7-238.harvard.edu'
 #[uuid: account info ]
 
@@ -342,14 +342,10 @@ class ClientSocket:
       proposed_leader_port = int(message[9:])
       if self.leader_server_port != proposed_leader_port:
         self.updateLeaderServer(proposed_leader_port)
-        print("I think the leader is", proposed_leader_port)
 
-        data = self.client.recv(1024).decode()
-        print('first data', data)
-        # while data[:9] != "nEwLeAdEr":
-        #   data = self.client.recv(1024).decode()
-        #   print("THIS IS THE DATA", data)
-        # return True if we have elected a new leader
+        # decode the data that is sent back from the server
+        self.client.recv(1024).decode()
+        # have the function return true
         return True
     
     # return False otherwise

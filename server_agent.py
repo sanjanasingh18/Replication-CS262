@@ -10,6 +10,7 @@ import sys
 import io
 import hashlib
 import datetime
+import shutil
 import random
 import hmac
 from _thread import *
@@ -31,7 +32,8 @@ all_server_indices = [0, 1, 2]
 failure_indices = [0]
 failure_interval = 25.0
 failure_detection_time = 7.0
-failmsg = "mandown:("
+server_comm_message = "comm_from_server"
+sophia_host = "dhcp-10-250-69-244.harvard.edu"
 
 class RepeatingTimer(Timer):
     def run(self):
@@ -54,7 +56,7 @@ class Server:
 
         # set host and port attributes
         if set_host is None:
-            self.host = ''
+            self.host = sophia_host
         else:
             self.host = set_host
 
@@ -791,7 +793,7 @@ class Server:
         if self.curr_leader == self.port:
             print("I am sending my heart beat actions:", actions)
 
-            if self.heartbeat_message == failmsg:
+            if self.heartbeat_message == comm_from_server:
                 actions = self.heartbeat_message
 
             # for each of the other non leader servers in the server conns connections
@@ -857,7 +859,7 @@ class Server:
                 # print("I think the leader is ", self.curr_leader)
 
                 # check if server down
-                if failmsg in server_message:
+                if comm_from_server in server_message:
                     # do not update server_comms
                     print("ServerComm", port)
                     self.failed_server_ports.add(port)
@@ -893,7 +895,7 @@ class Server:
                 # print("post socket update", self.server_comms)
                 
                 # check if server down
-                if failmsg in server_message:
+                if comm_from_server in server_message:
                     # do not update server_comms
                     print("ServerComm", port)
                     self.failed_server_ports.add(port)
@@ -1248,7 +1250,7 @@ class Server:
     # function to elect a new server leader
     def elect_new_server_leader(self):
         # if our current leader server has failed, want to carry out election
-        # past_leader = self.curr_leader
+        past_leader = self.curr_leader
         if self.curr_leader in self.failed_server_ports:
             # elect a new leader server- do it by the lowest port # 
             # possible- smallest port not failed
@@ -1261,19 +1263,19 @@ class Server:
                 self.curr_leader = self.ports[2]
 
         # if you are the new leader, parse the csv file so you are up to date
-        if self.curr_leader == self.port:
-            # parse the csv file
-            self.update_new_leader_data()
-            time.sleep(0.2)
-            # if you there is a new server leader, inform all clients!
-            message = "nEwLeAdEr" + str(self.curr_leader)
-            for client_conn, client_port in self.client_conns:
-                client_conn.sendto(
-                    message.encode(), (self.host, client_port))
+        if past_leader != self.curr_leader:
+            if self.curr_leader == self.port:
+                # parse the csv file
+                self.update_new_leader_data()
+                time.sleep(0.2)
+            
+                # if you there is a new server leader, inform all clients!
+                message = "nEwLeAdEr" + str(self.curr_leader)
+                for client_conn, client_port in self.client_conns:
+                    client_conn.sendto(
+                        message.encode(), (self.host, client_port))
                 
         print("!! Introducing the new server...", self.curr_leader)
-
-            
 
 
     # function to mimic server failure
@@ -1281,7 +1283,7 @@ class Server:
     def start_server_failure(self):
 
         # MODIFIED- try to have the heartbeat just send 'mandown'
-        self.heartbeat_message = failmsg
+        self.heartbeat_message = comm_from_server
         self.failed_server_ports.add(self.port)
         # if the server fails, you want to stop the heartbeat action
         #self.heartbeat.cancel()
@@ -1293,8 +1295,10 @@ class Server:
         # once the sleep time has stopped, we can reboot the server
         self.reboot_server()
 
+
     # function to reset the server communication list
     def reset_server_comms(self):
+        # when the server communicatons are reset, set each server's time to be None
         for ind, (port, _) in enumerate(self.server_comms):
             self.server_comms[ind] = (port, None)
 
@@ -1303,12 +1307,26 @@ class Server:
     def reboot_server(self):
         # reboot the server to start sending heartbeat actions again
         self.send_server_reboot_message()
+
+        # set the rebooted server's heartbeat message to be its port
         self.heartbeat_message = str(self.port)
+
+        # remove the rebooted server from the list of failed server
         self.failed_server_ports.remove(self.port)
+
+        # reset the timestamp communications on the rebooted server
         self.reset_server_comms()
-        # time.sleep(0.1)
+
+        # copy over the leader server's file cotents to the rebooted server
+        self.copy_leader_server_csv()
+
         print("Successfully rebooted this server...")
-        #self.start_heartbeat()
+
+
+    # function to make a copy of the leader's CSV file when a failed server is rebooted
+    def copy_leader_server_csv(self):
+        # use shutil to make a copy of the CSV file
+        shutil.copyfile("server_state_" + str(self.curr_leader - 8880) + ".csv", "server_state_" + str(self.port - 8880) + ".csv")
 
 
     # function to tell the other servers that this server has been rebooted
