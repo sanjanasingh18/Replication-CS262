@@ -41,6 +41,9 @@ class ClientSocket:
     self.port_index = self.ports.index(self.leader_server_port)
     self.client = self.client_sockets[self.port_index]
 
+    # create a variable to store the initial leader consensus
+    self.leader_consensus = []
+
   # basic get/set functions to allow for the server to update these values
 
   def updateLeaderServer(self, port):
@@ -441,15 +444,17 @@ class ClientSocket:
     host = set_host
 
     for ind, port in enumerate(self.ports):
-      # connect to each of the servers
-      print("curr port", port)
+      # connect to each of the three servers
+      print("Currently connecting to server port:", port)
       self.client_sockets[ind].connect((host, port))
       # tell all the servers that we are a client
       self.client_sockets[ind].sendto("client".encode(), (host, port))
       # will receive back who the curr leader is
       curr_leader_str = self.client_sockets[ind].recv(1024).decode()
-      self.updateLeaderServer(int(curr_leader_str[10:]))
-      print(port,  "done!", curr_leader_str)
+      self.leader_consensus.append(int(curr_leader_str[10:]))
+
+    leader_server_consensus = Counter(self.leader_consensus).most_common(1)[0][0]
+    self.updateLeaderServer(leader_server_consensus)
     
     # for ind, port in enumerate(self.ports):
     #   if ind>0:
@@ -529,21 +534,8 @@ class ClientSocket:
 
         # send message otherwise
         else:
-          self.client.sendto(('sendmsg' + self.getUsername() + "_" + message).encode(), (host, self.leader_server_port))
-          data = self.client.recv(1024).decode()
+          self.send_message(message.lower().strip(), host)
 
-          # if username is found, server will return 'User found. What is your message: '
-          if data == "User found. Please enter your message: ":
-            message = input(data)
-            while message == "":
-              message = input("Please enter a non-empty message to send: ")
-            self.client.sendto(message.encode(), (host, self.leader_server_port))
-            # receive confirmation from the server that it was delivered
-            data = self.client.recv(1024).decode()
-
-            
-          # print output of the server- either that it was successfully sent or that the user was not found.
-          print('Message from server: ' + data)
 
         # get all messages that have been delivered to this client
         self.get_client_messages(host)
