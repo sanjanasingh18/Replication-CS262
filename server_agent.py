@@ -29,7 +29,7 @@ all_server_indices = [0, 1, 2]
 # set the indices of the servers that can fail (to demo 2-fault tolerant system)
 # can alter these to be any 2 values between 0 and 2
 failure_indices = [0]
-failure_interval = 25.0
+failure_interval = 35.0
 failure_detection_time = 7.0
 failmsg = "mandown:("
 
@@ -179,6 +179,53 @@ class Server:
             # create the messages data structure as a list
             messages = []
             processed_messages = row["Messages"].strip('][').split(', ')
+
+            # add each message to the messages list
+            if processed_messages != ['']:
+                for message in processed_messages:
+                    messages.append(message)
+
+            # create a new client socket for each client that needs to be restored
+            client_socket = ClientSocket()
+            # update the username value in the client socket
+            client_socket.setUsername(row["Username"])
+            # update the password value for the client socket
+            client_socket.setPassword(row["Password"])
+            # update the logged in status for the client socket
+            client_socket.setLoggedIn(row["Logged_in"])
+            # update the messages value for the client socket
+            client_socket.setMessages(messages)
+
+            # update messages in Dataframe to be stored correctly
+            self.df.at[index, "Messages"] = messages
+
+            self.account_list[row["Username"]] = client_socket
+
+        # create a variable to store the timestamp the CSV file was last updated so we can return it
+        csv_timestamp = self.df["Timestamp_last_updated"].values[0]
+
+        # unlock mutex
+        self.account_list_lock.release()
+
+        # return the time this server state was last updated so we can print it
+        return csv_timestamp
+
+    # Function to parse the server data state csv file when a new server leader is elected
+    def update_new_leader_data(self):
+        # Account list is a dictionary [UUID: ClientObject]
+        # for row in csv,
+        # make client socket object using attributes
+        # add to dictionary!
+
+        # lock mutex
+        self.account_list_lock.acquire()
+
+        for index, row in self.df.iterrows():
+            # create the messages data structure as a list
+            messages = []
+            processed_messages = row["Messages"]
+            if isinstance(processed_messages, str):
+                processed_messages.strip('][').split(', ')
 
             # add each message to the messages list
             if processed_messages != ['']:
@@ -467,10 +514,11 @@ class Server:
         username = conn.recv(1024).decode()
 
         # send confirmation that username was received
-        confirm_received = "Confirming that the username has been received."
+        confirm_received = "Confirming that the username has been received." + username
         conn.sendto(confirm_received.encode(), (host, port))
 
         password = conn.recv(1024).decode()
+        print("RECEIVED PASSEDRW", password)
 
         # lock mutex
         self.account_list_lock.acquire()
@@ -812,6 +860,7 @@ class Server:
                 if failmsg in server_message:
                     # do not update server_comms
                     print("ServerComm", port)
+                    self.failed_server_ports.add(port)
 
                 # if we receive a server reboot update
                 elif server_message[:13] == "server_reboot":
@@ -847,6 +896,8 @@ class Server:
                 if failmsg in server_message:
                     # do not update server_comms
                     print("ServerComm", port)
+                    self.failed_server_ports.add(port)
+
 
                 # if we receive a server reboot update
                 elif server_message[:13] == "server_reboot":
@@ -1188,10 +1239,10 @@ class Server:
                     if port_val == self.curr_leader:
                         print("Electing a new leader...")
                         self.elect_new_server_leader()
-                # else, server has not failed, update the ports
-                else:
-                    if port_val in self.failed_server_ports:
-                        self.failed_server_ports.remove(port_val)
+                # # else, server has not failed, update the ports
+                # else:
+                #     if port_val in self.failed_server_ports:
+                #         self.failed_server_ports.remove(port_val)
 
 
     # function to elect a new server leader
@@ -1208,13 +1259,17 @@ class Server:
             else: 
                 self.curr_leader = self.ports[2]
 
+        # if you are the new leader, parse the csv file so you are up to date
+        if self.curr_leader == self.port:
+            # parse the csv file
+            self.update_new_leader_data()
+            time.sleep(0.2)
         # if you there is a new server leader, inform all clients!
         message = "nEwLeAdEr" + str(self.curr_leader)
         for client_conn, client_port in self.client_conns:
             client_conn.sendto(
                 message.encode(), (self.host, client_port))
                 
-
         print("!! Introducing the new server...", self.curr_leader)
 
             

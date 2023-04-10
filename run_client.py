@@ -174,6 +174,7 @@ class ClientSocket:
 
     # will receive back confirmation that username was sent successfully
     data = self.client.recv(1024).decode()
+    print("FROM SEREVR", data)
 
     # check if the leader server has changed
     if self.check_server_leader(data):
@@ -333,17 +334,22 @@ class ClientSocket:
 
 
   def check_server_leader(self, message):
-    print("I think the leader is", self.leader_server_port)
     # check if the server is telling us that we have a new leader
     if message[:9] == "nEwLeAdEr":
       # get the port and port index of the new leader and
       # set the client to communicate to the new server
       print("Updating the leader...")
-      self.updateLeaderServer(int(message[9:]))
-      print("I think the new leader is", self.leader_server_port)
+      proposed_leader_port = int(message[9:])
+      if self.leader_server_port != proposed_leader_port:
+        self.updateLeaderServer(proposed_leader_port)
+        print("I think the leader is", proposed_leader_port)
 
-      # return True if we have elected a new leader
-      return True
+        data = self.client.recv(1024).decode()
+        while data[:9] != "nEwLeAdEr":
+          data = self.client.recv(1024).decode()
+        print("THIS IS THE DATA", data)
+        # return True if we have elected a new leader
+        return True
     
     # return False otherwise
     return False
@@ -371,6 +377,8 @@ class ClientSocket:
     self.client.sendto(message.encode(), (host, self.leader_server_port))
 
     # server will send back messages of proper length
+    if len_msgs == "":
+      len_msgs = 1024
     data = self.client.recv(int(len_msgs)).decode()
 
     # check if the leader server has changed
