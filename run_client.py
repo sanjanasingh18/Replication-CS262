@@ -9,8 +9,10 @@ import threading
 from threading import Timer
 
 set_port = 8881
+# this host is to run servers on Sophia's computer.
+# Check the read me on how to find what host you should use! :)
 set_host = "dhcp-10-250-69-244.harvard.edu"
-# set_host = 'dhcp-10-250-7-238.harvard.edu'
+# set_host = ''
 #[uuid: account info ]
 
 
@@ -84,9 +86,6 @@ class ClientSocket:
 
   def setMessages(self, messages):
     self.messages = messages
-
-  # TODO give server acces to client's login
-  # state when we do transfer power between servers
 
 
   # Function to create a new account
@@ -345,10 +344,10 @@ class ClientSocket:
 
         # decode the data that is sent back from the server
         self.client.recv(1024).decode()
-        # have the function return true
+        # have the function return True- we elected a new leader
         return True
     
-    # return False otherwise
+    # return False otherwise- did not elect a new leader
     return False
 
 
@@ -460,11 +459,7 @@ class ClientSocket:
 
     leader_server_consensus = Counter(self.leader_consensus).most_common(1)[0][0]
     self.updateLeaderServer(leader_server_consensus)
-    
-    # for ind, port in enumerate(self.ports):
-    #   if ind>0:
-    #     # set up threads for other files
-    #     new_thread = threading.Thread(target=client_logic, args=(port))
+
 
     self.client_logic(self.leader_server_port)
 
